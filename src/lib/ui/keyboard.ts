@@ -50,6 +50,14 @@ export function handleKey(app: App, e: KeyboardEvent, openPicker: () => void): b
 		case 'C':
 			app.toggleCountIn();
 			return true;
+		case ',':
+		case '<':
+			app.speedStep(-1, e.shiftKey);
+			return true;
+		case '.':
+		case '>':
+			app.speedStep(1, e.shiftKey);
+			return true;
 		case '?':
 			app.view.shortcutsOpen = !app.view.shortcutsOpen;
 			return true;

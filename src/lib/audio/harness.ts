@@ -1,5 +1,6 @@
 import workletUrl from './player.worklet.ts?worker&url';
 import * as measure from './measure';
+import { detectTempo } from '../analysis/tempo-harness';
 import type { FromWorklet, ToWorklet } from './protocol';
 
 export interface HarnessRender {
@@ -51,7 +52,7 @@ async function render(o: HarnessRender): Promise<Float32Array> {
 	return out.getChannelData(0);
 }
 
-export const harness = { render, measure };
+export const harness = { render, measure, detectTempo };
 
 declare global {
 	interface Window {

@@ -37,7 +37,7 @@
 			testid="snap-toggle"
 		/>
 	</div>
-	<div class="fields">
+	<div class="fields mid">
 		<div class="field">
 			<span class="label">In</span>
 			<Value
@@ -84,11 +84,6 @@
 </div>
 
 <style>
-	.loop {
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-	}
 	.head {
 		display: flex;
 		gap: var(--s5);

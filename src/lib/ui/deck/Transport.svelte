@@ -39,6 +39,7 @@
 			<span class="dur">/ {t.loaded ? formatTime(t.length, t.sampleRate) : '—'}</span>
 		</div>
 	</div>
+	<div class="mid"></div>
 	<div class="foot">
 		<TextToggle
 			label="Count-in"
@@ -68,11 +69,6 @@
 </div>
 
 <style>
-	.transport {
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-	}
 	.head {
 		display: flex;
 		align-items: flex-start;

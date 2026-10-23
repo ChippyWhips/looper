@@ -53,13 +53,13 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 4: Speed, pitch, tempo, count-in
 
-- [ ] Stepped slider (detents, 6 px snap, Alt bypass, labels), typeable/scrubbable value, , . keys
-- [ ] Bipolar knob (25 ticks / 270°, centre detent, drag/scroll/keys, dbl-click reset), quick values + E♭ / D hints
-- [ ] tempo.worker.ts: essentia.js RhythmExtractor2013 (fallback web-audio-beat-detector), fold 70–180
-- [ ] Tempo value (typeable, scrub 0.1), `—` until known
-- [ ] Count-in toggle (C), beat indicator dot
-- [ ] Test: 120 BPM fixture → 120.0 ±0.5
-- [ ] Verify + screenshots + commit `phase 4`
+- [x] Stepped slider (detents, 6 px snap, Alt bypass, labels), typeable/scrubbable value, , . keys
+- [x] Bipolar knob (25 ticks / 270°, centre detent, drag/scroll/keys, dbl-click reset), quick values + E♭ / D hints
+- [x] tempo.worker.ts: essentia.js RhythmExtractor2013 (fallback web-audio-beat-detector), fold 70–180
+- [x] Tempo value (typeable, scrub 0.1), `—` until known
+- [x] Count-in toggle (C), beat indicator dot
+- [x] Test: 120 BPM fixture → 120.0 ±0.5
+- [x] Verify + screenshots + commit `phase 4`
 
 ## Phase 5: Visualiser
 
@@ -109,3 +109,11 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - Deck loop module: `● Loop` (accent) and `● Snap` (primary) as text toggles; In/Out label-over-value, `Length` inline below. No boxes on values.
 - Fixed: overview playhead was a second accent mark; now `--fg-muted`, so accent marks stay ≤ 4 (playhead + its ruler dot, Loop dot, Count-in dot).
 - Fixed: spectral flux reported 150 onsets in a steady 16-bit sine (log-magnitude jitter in noise-floor bins); added a −80 dBFS bin floor and an absolute flux threshold.
+
+### Phase 4
+
+- Speed: 1 px track, 2 × 16 px handle, 1 × 4 px detent ticks, mono 11 labels (active white, others subtle). No thumb blob, no filled range. Typeable `80%` right-aligned in mono 15.
+- Pitch: flat 56 px knob in `--control-bg`, 2 px indicator 30–85 % radius, 25 ticks on 270° lit from centre outwards. Quick values row 12 px apart with `E♭` / `D` hints under −100 / −200.
+- Fixed: modules stacked their content with `space-between`, so the speed slider sat on the bottom edge. All modules now share a three-row grid (header / control / footer): headers, middle controls (In/Out, slider, knob) and footers (Count-in, Length, quick values) line up across the deck.
+- Fixed: in the empty state the `100` detent label was white; disabled labels are now all `--fg-subtle`.
+- Accent marks with loop and count-in on: playhead (+ ruler dot), Loop dot, Count-in dot = 3.

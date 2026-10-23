@@ -46,3 +46,13 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 - **Clicks inside the loop band seek** as well (no drag = seek); only clicks on an edge select it instead.
 - **Minimum loop length** is 1 ms.
 - **Overview playhead is `--fg-muted`**, keeping the accent count at four.
+
+## Speed, pitch, tempo, count-in
+
+- **Speed slider spacing.** Detents are evenly spaced along the slider (25, 50, 60, 70, 75, 80, 90, 100, 150 as equal segments, piecewise-linear between). On a proportional scale 70/75/80 would be 7 px apart at 1280 px and their labels would overlap; even spacing also gives the 50–100 % practice range most of the travel. Values between detents still move in 1 % steps.
+- **essentia.js 0.1.3 (AGPL-3.0) verified** in module workers in Chromium, Firefox and WebKit: the 120 BPM click fixture reads 120.04 BPM, the 5-minute song 120.00. It analyses up to the first 120 s, resampled to 44.1 kHz (the rate RhythmExtractor2013 assumes), `multifeature` method; ~1.2 s for 30 s, ~4 s for 120 s. The fallback (`web-audio-beat-detector`) is not needed and not installed.
+- **Tempo shows one decimal**, rounded; typed values override detection and are kept per track.
+- **Quick pitch values and detent labels use mono 11** (`--fs-xs`): the type scale has no 13 px mono, and 15 px would not fit the row at 1280 px.
+- **Knob detent** is a 12 px dead band (±6 px) around 0 in drag space; crossing it costs 6 px. Alt drags straight through.
+- **Beat indicator** lights the Count-in dot for 100 ms from each click's audible time (click time + output latency), instant on and off, driven from the rAF loop.
+- **`,` / `.` below 50 % or above 100 %** go to the nearest preset in that direction and stop at the ends of the preset list; Shift steps 1 %.

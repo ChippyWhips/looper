@@ -6,6 +6,9 @@ import OnsetsWorker from '../analysis/onsets.worker.ts?worker';
 import type { OnsetsResponse } from '../analysis/onsets.worker';
 import { nearestZeroCrossing } from '../analysis/zero-crossing';
 import type { Edge } from './loop.svelte';
+import TempoWorker from '../analysis/tempo.worker.ts?worker';
+import type { TempoResponse } from '../analysis/tempo.worker';
+import { PITCH_MAX, PITCH_MIN, SPEED_MAX, SPEED_MIN, SPEED_PRESETS } from './transport.svelte';
 import { LoopState } from './loop.svelte';
 import { TrackState } from './track.svelte';
 import { TransportState } from './transport.svelte';
@@ -25,8 +28,11 @@ export class App {
 	/** ms from open() to playable, for performance tests. */
 	lastOpenMs = 0;
 
+	private beats: number[] = [];
+
 	constructor() {
 		this.engine.events.state = (s) => (this.transport.state = s);
+		this.engine.events.beats = (times) => (this.beats = times);
 		this.engine.events.error = (m) => console.warn('engine:', m);
 	}
 
@@ -70,6 +76,9 @@ export class App {
 		t.peaks = null;
 		t.mono = null;
 		t.onsets = null;
+		this.transport.tempoDetected = null;
+		this.transport.tempoOverride = null;
+		this.transport.countIn = false;
 		this.loop.start = 0;
 		this.loop.end = 0;
 		this.loop.on = false;
@@ -131,7 +140,44 @@ export class App {
 		this.onMonoExtra(mono, seq);
 	}
 
-	protected onMonoExtra(_mono: Float32Array, _seq: number): void {}
+	/** Tempo detection in a worker; a typed override always wins. */
+	protected onMonoExtra(mono: Float32Array, seq: number): void {
+		const w = new TempoWorker();
+		w.onmessage = (e: MessageEvent<TempoResponse>) => {
+			w.terminate();
+			if (seq !== this.openSeq) return;
+			if (e.data.error) console.warn('tempo:', e.data.error);
+			this.transport.tempoDetected = e.data.bpm === null ? null : Math.round(e.data.bpm * 10) / 10;
+		};
+		const copy = mono.slice();
+		w.postMessage({ mono: copy, sampleRate: this.track.sampleRate }, [copy.buffer]);
+	}
+
+	// Speed and pitch
+
+	setSpeed(pct: number): void {
+		const v = Math.round(Math.min(SPEED_MAX, Math.max(SPEED_MIN, pct)));
+		this.transport.speed = v;
+		this.engine.setParams(v / 100, this.transport.cents);
+	}
+
+	/** , / . : previous / next preset; with Shift, ±1 %. */
+	speedStep(dir: -1 | 1, shift: boolean): void {
+		if (!this.track.loaded) return;
+		const cur = this.transport.speed;
+		if (shift) return this.setSpeed(cur + dir);
+		const next =
+			dir > 0
+				? SPEED_PRESETS.find((p) => p > cur)
+				: [...SPEED_PRESETS].reverse().find((p) => p < cur);
+		if (next !== undefined) this.setSpeed(next);
+	}
+
+	setPitch(cents: number): void {
+		const v = Math.round(Math.min(PITCH_MAX, Math.max(PITCH_MIN, cents)));
+		this.transport.cents = v;
+		this.engine.setParams(this.transport.speed / 100, v);
+	}
 
 	// Loop
 
@@ -370,8 +416,22 @@ export class App {
 		this.view.wave.follow = false;
 	}
 
+	/** Count-in beat indicator: lit for 100 ms from each audible click. */
+	private tickBeats(): void {
+		const ctx = this.engine.ctx;
+		if (!this.beats.length || !ctx) {
+			if (this.transport.beatLit) this.transport.beatLit = false;
+			return;
+		}
+		const now = ctx.currentTime;
+		const lit = this.beats.some((t) => now >= t && now < t + 0.1);
+		if (lit !== this.transport.beatLit) this.transport.beatLit = lit;
+		if (now > this.beats[this.beats.length - 1] + 0.1) this.beats = [];
+	}
+
 	/** Per-frame housekeeping: follow the playhead by paging. Returns the playhead. */
 	tick(): number {
+		this.tickBeats();
 		const ph = this.position();
 		const vp = this.viewport;
 		if (this.transport.playing && this.view.wave.follow && !vp.isFit) {

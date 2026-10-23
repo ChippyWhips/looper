@@ -36,7 +36,13 @@ const STATES: State[] = [
 				app.loop.selected = 'in';
 				app.seek(Math.round(45.2 * sr));
 				app.zoomToLoop();
+				app.setSpeed(80);
+				app.setPitch(-100);
 			});
+			await page.waitForFunction(() => window.looper.transport.tempo !== null, null, {
+				timeout: 20000
+			});
+			await page.evaluate(() => (window.looper.transport.countIn = true));
 			await page.waitForTimeout(900);
 		}
 	},
