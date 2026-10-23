@@ -1,0 +1,165 @@
+@layer reset, tokens, base, components;
+
+@layer tokens {
+	/* Primitives: every unique colour value. Components never reference these. */
+	:root {
+		--neutral-950: #080808;
+		--neutral-925: #0e0e0e;
+		--neutral-910: #121212;
+		--neutral-900: #161616;
+		--neutral-875: #1c1c1c;
+		--neutral-850: #2a2a2a;
+		--neutral-700: #3a3a3a;
+		--neutral-600: #525252;
+		--neutral-450: #8a8a8a;
+		--neutral-100: #ededed;
+		--neutral-100-a04: rgb(237 237 237 / 0.04);
+		--neutral-100-a06: rgb(237 237 237 / 0.06);
+		--red-500: #ff3b30;
+		--ember-900: #1c0503;
+		--ember-700: #8c120c;
+		--ember-200: #ff9e85;
+	}
+
+	/* Semantic tokens: dark theme. A light theme remaps this block under :root[data-theme='light']. */
+	:root {
+		color-scheme: dark;
+
+		--bg-sunken: var(--neutral-950);
+		--bg-default: var(--neutral-925);
+		--bg-raised: var(--neutral-910);
+		--bg-interactive-hover: var(--neutral-900);
+		--control-bg: var(--neutral-875);
+		--control-bg-hover: var(--neutral-100-a06);
+		--control-track: var(--neutral-850);
+		--control-fill: var(--neutral-100);
+		--border-subtle: var(--neutral-875);
+		--border-strong: var(--neutral-850);
+		--border-focus: var(--neutral-100);
+		--fg-primary: var(--neutral-100);
+		--fg-muted: var(--neutral-450);
+		--fg-subtle: var(--neutral-600);
+		--fg-on-primary: var(--neutral-925);
+		--wave-default: var(--neutral-700);
+		--wave-active: var(--neutral-100);
+		--loop-band: var(--neutral-100-a04);
+		--loop-edge: var(--neutral-100);
+		--accent: var(--red-500);
+		--viz-1: var(--ember-900);
+		--viz-2: var(--ember-700);
+		--viz-3: var(--red-500);
+		--viz-4: var(--ember-200);
+	}
+
+	/* Type, space, line, motion and layout tokens. */
+	:root {
+		--font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--font-mono: ui-monospace, 'Geist Mono', monospace;
+		--fs-xs: 11px;
+		--lh-xs: 14px;
+		--fs-sm: 13px;
+		--lh-sm: 16px;
+		--fs-md: 15px;
+		--lh-md: 20px;
+		--fs-lg: 28px;
+		--lh-lg: 32px;
+		--fw-regular: 400;
+		--fw-medium: 500;
+
+		--s1: 4px;
+		--s2: 8px;
+		--s3: 12px;
+		--s4: 16px;
+		--s5: 24px;
+		--s6: 32px;
+
+		--line: 1px;
+		--line-strong: 2px;
+		--dot: 6px;
+
+		--dur-instant: 0ms;
+		--dur-fast: 200ms;
+		--dur-base: 300ms;
+		--dur-slow: 600ms;
+		--ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+		--topbar-h: 40px;
+		--ruler-h: 20px;
+		--overview-h: 24px;
+		--lane-h: 40px;
+		--deck-h: 176px;
+		--transport-w: 240px;
+		--loop-min-w: 320px;
+		--viz-w: 280px;
+		--play-size: 40px;
+		--knob-size: 56px;
+		--icon-size: 16px;
+		--icon-play: 14px;
+		--panel-w: 320px;
+		--row-h: 32px;
+		--slider-handle-h: 16px;
+		--tick-len: 4px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:root {
+			--dur-base: 0ms;
+			--dur-slow: 0ms;
+		}
+	}
+}
+
+@layer reset {
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+
+	button,
+	input {
+		font: inherit;
+		color: inherit;
+		background: none;
+		border: 0;
+		border-radius: 0;
+		appearance: none;
+	}
+
+	button {
+		cursor: pointer;
+	}
+}
+
+@layer base {
+	html,
+	body {
+		height: 100%;
+		overflow: hidden;
+	}
+
+	body {
+		background: var(--bg-default);
+		color: var(--fg-primary);
+		font-family: var(--font-sans);
+		font-size: var(--fs-sm);
+		line-height: var(--lh-sm);
+		font-weight: var(--fw-regular);
+		font-variant-numeric: tabular-nums slashed-zero;
+		-webkit-font-smoothing: antialiased;
+		user-select: none;
+		min-width: 1280px;
+		min-height: 800px;
+	}
+
+	:focus-visible {
+		outline: var(--line) solid var(--border-focus);
+		outline-offset: 2px;
+	}
+
+	:focus:not(:focus-visible) {
+		outline: none;
+	}
+}
