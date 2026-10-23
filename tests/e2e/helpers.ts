@@ -1,4 +1,24 @@
-import type { ConsoleMessage, Page } from '@playwright/test';
+import { expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { join } from 'node:path';
+import type { App } from '../../src/lib/state/app.svelte';
+
+declare global {
+	interface Window {
+		looper: App;
+	}
+}
+
+export const FIXTURES = join(import.meta.dirname, '..', '..', 'static', 'fixtures');
+
+/** Open a fixture through the file picker and wait until it is ready with peaks. */
+export async function loadFixture(page: Page, name: string): Promise<void> {
+	await page.locator('[data-testid=picker]').setInputFiles(join(FIXTURES, name));
+	await expect
+		.poll(() => page.evaluate(() => !!window.looper?.track.loaded && !!window.looper.track.peaks), {
+			timeout: 15000
+		})
+		.toBe(true);
+}
 
 /** Collect console errors and page errors for later assertion. */
 export function watchErrors(page: Page): string[] {

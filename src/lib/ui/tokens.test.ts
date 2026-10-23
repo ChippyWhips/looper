@@ -105,7 +105,7 @@ describe('design tokens', () => {
 			if (/#[0-9a-fA-F]{3,8}\b/.test(css)) offences.push(`${rel}: hex colour`);
 			if (/\b(rgba?|hsla?|oklch|oklab|lab|lch|color)\(/.test(css))
 				offences.push(`${rel}: colour function`);
-			if (/\b(white|black|red|blue|purple|gray|grey)\b/.test(css))
+			if (/(?<![\w-])(white|black|red|blue|purple|gray|grey)(?![\w-])/.test(css))
 				offences.push(`${rel}: named colour`);
 		}
 		for (const f of scripts) {

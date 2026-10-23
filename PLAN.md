@@ -29,16 +29,16 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 2: Waveform
 
-- [ ] peaks.worker.ts: multi-resolution min/max (32, 64 … frames per bucket)
-- [ ] Unit test: every level equals brute force
-- [ ] View model: N lanes sharing one viewport (main lane only rendered)
-- [ ] Canvas renderer: DPR-aware, 1 px columns, polyline < 1 frame/px, dots > 6 px/sample
-- [ ] Ruler (adaptive ticks: m:ss → ms → samples), overview strip (24 px), playhead (rAF)
-- [ ] Zoom (⌘+scroll / pinch anchored, = - 0 Z), pan (scroll, overview drag), follow playhead (paging, F)
-- [ ] Progressive draw as levels arrive; fade in on Slow tier
-- [ ] App shell: top bar, waveform area, deck skeleton
-- [ ] E2E: sample dots screenshot at max zoom; zoom fps trace; load trace
-- [ ] Verify + screenshots + commit `phase 2`
+- [x] peaks.worker.ts: multi-resolution min/max (32, 64 … frames per bucket)
+- [x] Unit test: every level equals brute force
+- [x] View model: N lanes sharing one viewport (main lane only rendered)
+- [x] Canvas renderer: DPR-aware, 1 px columns, polyline < 1 frame/px, dots > 6 px/sample
+- [x] Ruler (adaptive ticks: m:ss → ms → samples), overview strip (24 px), playhead (rAF)
+- [x] Zoom (⌘+scroll / pinch anchored, = - 0 Z), pan (scroll, overview drag), follow playhead (paging, F)
+- [x] Progressive draw as levels arrive; fade in on Slow tier
+- [x] App shell: top bar, waveform area, deck skeleton
+- [x] E2E: sample dots screenshot at max zoom; zoom fps trace; load trace
+- [x] Verify + screenshots + commit `phase 2`
 
 ## Phase 3: Loop editing
 
@@ -90,4 +90,14 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 ## Screenshot review log
 
 ### Phase 1
+
 - No product UI yet (by design: phase 1 is engine only). `/` shows the app name on `--bg-default`; `/debug` is an unstyled test page and is excluded from review.
+
+### Phase 2
+
+- Waveform: true min/max per device column, crisp, edge to edge; zero line in `--border-subtle`; overview strip with hairline under it. Matches ref 10 (vertical-line waveform, accent playhead with dot head on the ruler).
+- Sample zoom: 1 px polyline with 2 px square dots per sample (dots same colour as line; visible as nodes at 2× crop). OK per spec.
+- Fixed: `Open` / `?` were 24 px apart (row gap is 12 px).
+- Deck modules other than transport are empty until phases 3–5. Transport: play circle, 28 px readout, `/ 0:10.000` subtle, Count-in ring + `— BPM`.
+- Watch: inactive waveform `--wave-default` is very dark on `--bg-sunken`; that is the spec's value (white is reserved for the loop). Revisit only if the loop-on screenshot reads poorly.
+- Perf: load-to-playable 437 ms (5-min MP3); no long tasks during load after moving AudioContext creation to startup; zoom fit→max mean 16.67 ms/frame.

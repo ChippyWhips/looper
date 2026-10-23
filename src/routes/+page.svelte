@@ -1,12 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '#lib/config.ts';
+	import AppShell from '#lib/ui/AppShell.svelte';
 </script>
 
-<main class="app">{APP_NAME}</main>
-
-<style>
-	.app {
-		color: var(--fg-muted);
-		padding: var(--s4);
-	}
-</style>
+<AppShell />

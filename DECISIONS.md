@@ -26,3 +26,12 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 - **Enter starts playback.** "Jump to loop start" also starts playback (with count-in if on), since the count-in section lists Enter as a way of starting playback.
 - **Debug page** uses plain buttons/inputs; it is a test tool, not product UI.
 - **Ping is answered outside the render loop.** In an `OfflineAudioContext` nothing renders until `startRendering()`, so the worklet acknowledges `ping` from its message handler (after queuing all earlier messages in order) rather than at the next quantum.
+
+## Waveform
+
+- **Device-pixel columns.** Peaks are drawn per device pixel column (1 device px wide), so on Retina the waveform has twice the detail and every line sits on the device grid.
+- **Exact column min/max.** Each column's range is covered by the coarsest whole buckets that fit, recursing to finer levels and raw samples at the edges (`rangeMinMax`). The drawn min/max is exactly the samples in the column, not the overlapping buckets.
+- **Stereo.** Peaks are the envelope of both channels. At sample level both channels are drawn as polylines (they coincide for mono content).
+- **AudioContexts are pre-warmed at startup** for 44.1 and 48 kHz. Constructing an AudioContext blocked Chromium's main thread for ~250 ms, which broke the 50 ms budget during load. Other rates are created on demand.
+- **Vertical wheel pans** as well as horizontal (mouse users have no horizontal wheel). ⌘ + wheel and pinch zoom; Safari pinch uses `gesturechange`.
+- **`=` / `-` zoom ×2** anchored at the playhead when visible, else the view centre.

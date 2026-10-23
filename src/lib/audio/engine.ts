@@ -30,18 +30,37 @@ const yieldTask = () => new Promise<void>((r) => setTimeout(r, 0));
  * Main-thread side of the player. Owns the AudioContext and the worklet node; sends commands
  * and interpolates the audible position. Holds no audio state of its own beyond the last report.
  */
+interface Graph {
+	ctx: AudioContext;
+	node: AudioWorkletNode | null;
+	analyser: AnalyserNode | null;
+	ready: Promise<void>;
+}
+
 export class Engine {
-	ctx: AudioContext | null = null;
-	node: AudioWorkletNode | null = null;
-	analyser: AnalyserNode | null = null;
+	private graphs = new Map<number, Graph>();
+	private active: Graph | null = null;
 	length = 0;
 	private last: PosReport = { contextTime: 0, sourceFrame: 0, velocity: 0, state: 'stopped' };
 	private loop: LoopState = { start: 0, end: 0, on: false };
-	private ready: Promise<void> | null = null;
 	private pings = new Map<number, () => void>();
 	private pingId = 0;
 	private latencySent = -1;
 	events: EngineEvents = {};
+	/** Called when the active context (and so the analyser) changes. */
+	onGraph: (() => void) | null = null;
+
+	get ctx(): AudioContext | null {
+		return this.active?.ctx ?? null;
+	}
+
+	get node(): AudioWorkletNode | null {
+		return this.active?.node ?? null;
+	}
+
+	get analyser(): AnalyserNode | null {
+		return this.active?.analyser ?? null;
+	}
 
 	get sampleRate(): number {
 		return this.ctx?.sampleRate ?? 48000;
@@ -51,16 +70,27 @@ export class Engine {
 		return this.last.state;
 	}
 
-	/** (Re)create the context at the given rate. Resolves when the worklet core is ready. */
-	async ensureContext(sampleRate: number): Promise<void> {
-		if (this.ctx && this.ctx.sampleRate === sampleRate && this.ready) return this.ready;
-		if (this.ctx) {
-			this.node?.disconnect();
-			void this.ctx.close();
+	/**
+	 * Create contexts ahead of time. Constructing an AudioContext can block the main thread
+	 * for hundreds of ms, so this runs at startup rather than when a track is opened.
+	 */
+	async prewarm(rates: number[]): Promise<void> {
+		for (const r of rates) {
+			await new Promise<void>((res) => setTimeout(res, 0));
+			await this.graph(r).ready;
 		}
+		this.warm = true;
+	}
+
+	/** True once prewarm() has finished. */
+	warm = false;
+
+	private graph(sampleRate: number): Graph {
+		const existing = this.graphs.get(sampleRate);
+		if (existing) return existing;
 		const ctx = new AudioContext({ sampleRate, latencyHint: 'interactive' });
-		this.ctx = ctx;
-		this.ready = (async () => {
+		const g: Graph = { ctx, node: null, analyser: null, ready: Promise.resolve() };
+		g.ready = (async () => {
 			await ctx.audioWorklet.addModule(workletUrl);
 			const node = new AudioWorkletNode(ctx, 'looper-player', {
 				numberOfInputs: 0,
@@ -72,18 +102,36 @@ export class Engine {
 			analyser.smoothingTimeConstant = 0;
 			node.connect(analyser);
 			analyser.connect(ctx.destination);
-			this.node = node;
-			this.analyser = analyser;
+			g.node = node;
+			g.analyser = analyser;
 			await new Promise<void>((resolve, reject) => {
 				node.port.onmessage = (e: MessageEvent<FromWorklet>) => {
 					if (e.data.type === 'ready') resolve();
 					else if (e.data.type === 'error') reject(new Error(e.data.message));
-					this.onMessage(e.data);
 				};
 			});
-			node.port.onmessage = (e: MessageEvent<FromWorklet>) => this.onMessage(e.data);
+			node.port.onmessage = (e: MessageEvent<FromWorklet>) => {
+				if (this.active === g) this.onMessage(e.data);
+			};
 		})();
-		return this.ready;
+		this.graphs.set(sampleRate, g);
+		return g;
+	}
+
+	/** Make the context at this rate active. Resolves when its worklet core is ready. */
+	async ensureContext(sampleRate: number): Promise<void> {
+		const g = this.graph(sampleRate);
+		if (this.active !== g) {
+			if (this.active) {
+				this.active.node?.port.postMessage({ type: 'pause' } satisfies ToWorklet);
+				void this.active.ctx.suspend();
+			}
+			this.active = g;
+			this.latencySent = -1;
+			await g.ready;
+			this.onGraph?.();
+		}
+		return g.ready;
 	}
 
 	private send(msg: ToWorklet, transfer: Transferable[] = []): void {

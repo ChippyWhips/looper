@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { PHASE } from './helpers';
+import { PHASE, loadFixture } from './helpers';
 
 const SIZES = [
 	{ width: 1280, height: 800 },
@@ -12,8 +12,29 @@ const STATES: State[] = [
 	{
 		name: 'empty',
 		setup: async (page) => {
-			await page.goto('/');
-			await page.waitForTimeout(300);
+			await page.goto('/?test');
+			await page.waitForTimeout(700);
+		}
+	},
+	{
+		name: 'loaded',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.waitForTimeout(900);
+		}
+	},
+	{
+		name: 'sample-zoom',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await loadFixture(page, 'sine-440-48000.wav');
+			await page.evaluate(() => {
+				const app = window.looper;
+				app.viewport.zoomAt(1e9, 0);
+				app.viewport.setStart(1000);
+			});
+			await page.waitForTimeout(900);
 		}
 	}
 ];
