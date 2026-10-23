@@ -16,16 +16,16 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 1: Audio engine
 
-- [ ] Verify Signalsmith Stretch (npm `signalsmith-stretch` 1.3.2, MIT): extract emscripten core, run in Node + AudioWorklet
-- [ ] `Stretcher` interface + Signalsmith implementation (+ resampler for pitch, see DECISIONS)
-- [ ] `crossfade.ts`: equal-power curves, correlation-aware loop crossfade
-- [ ] `sources.ts`: AudioSource types, mute/solo resolution, N-source mixer with 20 ms equal-power set crossfade
-- [ ] `player.worklet.ts`: reader (loop wrap, 5 ms crossfade, seek), stretcher, bypass at unity, count-in clicks, position reports
-- [ ] `engine.ts`: decode, transfer channels, commands, interpolated position
-- [ ] `/debug` page: play, loop range, speed, pitch
-- [ ] Offline tests (Playwright chromium, real worklet in OfflineAudioContext): wrap ±1 frame @1.0, cycle length @0.5/0.75 ±1 ms, no clicks, 1 kHz @50% ±1 ct, 440 @−100 ct → 415.3 ±1 ct at 100% and 50%, count-in spacing + first audio frame
-- [ ] Unit tests: crossfade, mixer (two synthetic sources), mute/solo, time formatting round trips
-- [ ] Verify + commit `phase 1`
+- [x] Verify Signalsmith Stretch (npm `signalsmith-stretch` 1.3.2, MIT): extract emscripten core, run in Node + AudioWorklet
+- [x] `Stretcher` interface + Signalsmith implementation (+ resampler for pitch, see DECISIONS)
+- [x] `crossfade.ts`: equal-power curves, correlation-aware loop crossfade
+- [x] `sources.ts`: AudioSource types, mute/solo resolution, N-source mixer with 20 ms equal-power set crossfade
+- [x] `player.worklet.ts`: reader (loop wrap, 5 ms crossfade, seek), stretcher, bypass at unity, count-in clicks, position reports
+- [x] `engine.ts`: decode, transfer channels, commands, interpolated position
+- [x] `/debug` page: play, loop range, speed, pitch
+- [x] Offline tests (Playwright chromium, real worklet in OfflineAudioContext): wrap ±1 frame @1.0, cycle length @0.5/0.75 ±1 ms, no clicks, 1 kHz @50% ±1 ct, 440 @−100 ct → 415.3 ±1 ct at 100% and 50%, count-in spacing + first audio frame
+- [x] Unit tests: crossfade, mixer (two synthetic sources), mute/solo, time formatting round trips
+- [x] Verify + commit `phase 1`
 
 ## Phase 2: Waveform
 
@@ -88,3 +88,6 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - [ ] Verify + commit `phase 7`
 
 ## Screenshot review log
+
+### Phase 1
+- No product UI yet (by design: phase 1 is engine only). `/` shows the app name on `--bg-default`; `/debug` is an unstyled test page and is excluded from review.
