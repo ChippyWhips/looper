@@ -35,3 +35,14 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 - **AudioContexts are pre-warmed at startup** for 44.1 and 48 kHz. Constructing an AudioContext blocked Chromium's main thread for ~250 ms, which broke the 50 ms budget during load. Other rates are created on demand.
 - **Vertical wheel pans** as well as horizontal (mouse users have no horizontal wheel). ⌘ + wheel and pinch zoom; Safari pinch uses `gesturechange`.
 - **`=` / `-` zoom ×2** anchored at the playhead when visible, else the view centre.
+
+## Loop editing
+
+- **Zero crossings are measured about the local DC level** (Hann-weighted mean over ±2048 frames). With a DC offset the raw signal may never cross zero; crossings of the AC component are what make a seamless loop edge.
+- **Nudges snap directionally.** `←`/`→` move 1 ms (10 ms with Shift) and then snap to the nearest zero crossing _beyond_ the current edge, so repeated nudges always progress instead of snapping back. Alt moves exactly one sample, unsnapped.
+- **Typed and scrubbed values snap to zero crossings only.** Onset snapping depends on zoom (8 px), which makes no sense for a value typed to the millisecond.
+- **Creating a region turns looping on** (drag-create, or I/O when no region exists). Toggling with `L` afterwards keeps the region.
+- **I with no region** creates `[playhead, track end)`; **O with no region** creates `[0, playhead)`. The next I/O completes the region.
+- **Clicks inside the loop band seek** as well (no drag = seek); only clicks on an edge select it instead.
+- **Minimum loop length** is 1 ms.
+- **Overview playhead is `--fg-muted`**, keeping the accent count at four.

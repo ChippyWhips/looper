@@ -1,6 +1,9 @@
 import type { App } from '../../state/app.svelte';
 import type { LoopDraw } from './render';
 
+const HIT = 8;
+const DRAG_PX = 3;
+
 /** Pointer and wheel handling for the waveform canvases. */
 export class WaveformInput {
 	cursor = $state('default');
@@ -47,17 +50,85 @@ export class WaveformInput {
 		this.app.viewport.zoomAt(f, x);
 	}
 
+	/** Which part of the loop is under x: an edge (±4 px), inside the band, or outside. */
+	private hit(x: number): 'in' | 'out' | 'inside' | 'outside' {
+		const l = this.app.loop;
+		if (!l.exists) return 'outside';
+		const vp = this.app.viewport;
+		const xi = vp.xAt(l.start);
+		const xo = vp.xAt(l.end);
+		const di = Math.abs(x - xi);
+		const dout = Math.abs(x - xo);
+		if (Math.min(di, dout) <= HIT / 2) return di <= dout ? 'in' : 'out';
+		if (x > xi && x < xo) return 'inside';
+		return 'outside';
+	}
+
+	private drag: {
+		kind: 'in' | 'out' | 'inside' | 'outside';
+		x: number;
+		frame: number;
+		origStart: number;
+		moved: boolean;
+	} | null = null;
+
 	mainDown(e: PointerEvent, el: HTMLElement): void {
 		if (!this.app.track.loaded || e.button !== 0) return;
 		el.setPointerCapture(e.pointerId);
-		this.app.seek(this.app.viewport.frameAt(this.localX(e, el)));
+		const x = this.localX(e, el);
+		const kind = this.hit(x);
+		this.drag = {
+			kind,
+			x,
+			frame: this.app.viewport.frameAt(x),
+			origStart: this.app.loop.start,
+			moved: false
+		};
+		if (kind === 'in' || kind === 'out') this.app.loop.selected = kind;
 	}
 
-	mainMove(_e: PointerEvent, _el: HTMLElement): void {}
+	mainMove(e: PointerEvent, el: HTMLElement): void {
+		const x = this.localX(e, el);
+		const d = this.drag;
+		if (!d) {
+			const h = this.app.track.loaded ? this.hit(x) : 'outside';
+			this.cursor = h === 'in' || h === 'out' ? 'col-resize' : h === 'inside' ? 'grab' : 'default';
+			return;
+		}
+		if (!d.moved && Math.abs(x - d.x) < DRAG_PX) return;
+		d.moved = true;
+		const app = this.app;
+		const f = app.viewport.frameAt(x);
+		switch (d.kind) {
+			case 'in':
+			case 'out':
+				app.setEdge(d.kind, app.snap(f, e.altKey));
+				break;
+			case 'inside':
+				this.cursor = 'grabbing';
+				app.moveLoop(app.snap(d.origStart + (f - d.frame), e.altKey));
+				break;
+			case 'outside':
+				app.loop.selected = null;
+				app.setLoopRange(app.snap(d.frame, e.altKey), app.snap(f, e.altKey), true);
+				break;
+		}
+	}
 
-	mainUp(_e: PointerEvent, _el: HTMLElement): void {}
+	mainUp(e: PointerEvent, el: HTMLElement): void {
+		const d = this.drag;
+		this.drag = null;
+		if (!d) return;
+		if (!d.moved && (d.kind === 'outside' || d.kind === 'inside')) {
+			this.app.loop.selected = null;
+			this.app.seek(d.frame);
+		}
+		this.mainMove(e, el);
+	}
 
-	mainLeave(): void {}
+	mainLeave(): void {
+		if (!this.drag) this.cursor = 'default';
+	}
 
 	private overviewSeek(e: PointerEvent, el: HTMLElement): void {
 		const r = el.getBoundingClientRect();

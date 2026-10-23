@@ -42,14 +42,14 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 3: Loop editing
 
-- [ ] Drag create / move / resize (8 px hit zone, col-resize), click outside seeks
-- [ ] onsets.worker.ts (spectral flux), zero-crossing.ts (+ tests: silence, DC, sine)
-- [ ] Snapping: onset within 8 px, else zero crossing ±2 ms; Alt bypass
-- [ ] Edge selection ([ ] / click), nudge ← → (1 ms, Shift 10 ms, Alt 1 sample)
-- [ ] In / Out / Length typed fields (m:ss.mmm), Enter/Esc, Alt+Enter no-snap
-- [ ] Loop toggle (L), outline-only when off, Enter jumps to loop start
-- [ ] I / O set at playhead, live edits
-- [ ] Verify + screenshots + commit `phase 3`
+- [x] Drag create / move / resize (8 px hit zone, col-resize), click outside seeks
+- [x] onsets.worker.ts (spectral flux), zero-crossing.ts (+ tests: silence, DC, sine)
+- [x] Snapping: onset within 8 px, else zero crossing ±2 ms; Alt bypass
+- [x] Edge selection ([ ] / click), nudge ← → (1 ms, Shift 10 ms, Alt 1 sample)
+- [x] In / Out / Length typed fields (m:ss.mmm), Enter/Esc, Alt+Enter no-snap
+- [x] Loop toggle (L), outline-only when off, Enter jumps to loop start
+- [x] I / O set at playhead, live edits
+- [x] Verify + screenshots + commit `phase 3`
 
 ## Phase 4: Speed, pitch, tempo, count-in
 
@@ -101,3 +101,11 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - Deck modules other than transport are empty until phases 3–5. Transport: play circle, 28 px readout, `/ 0:10.000` subtle, Count-in ring + `— BPM`.
 - Watch: inactive waveform `--wave-default` is very dark on `--bg-sunken`; that is the spec's value (white is reserved for the loop). Revisit only if the loop-on screenshot reads poorly.
 - Perf: load-to-playable 437 ms (5-min MP3); no long tasks during load after moving AudioContext creation to startup; zoom fit→max mean 16.67 ms/frame.
+
+### Phase 3
+
+- Loop on: 4 % band, white waveform inside, 1 px white edges, selected edge 2 px with mono time label inside at top. Overview shows band, edges and the white 1 px window rectangle.
+- Loop off: two 1 px `--fg-muted` edges, no band, waveform not highlighted. Matches spec.
+- Deck loop module: `● Loop` (accent) and `● Snap` (primary) as text toggles; In/Out label-over-value, `Length` inline below. No boxes on values.
+- Fixed: overview playhead was a second accent mark; now `--fg-muted`, so accent marks stay ≤ 4 (playhead + its ruler dot, Loop dot, Count-in dot).
+- Fixed: spectral flux reported 150 onsets in a steady 16-bit sine (log-magnitude jitter in noise-floor bins); added a −80 dBFS bin floor and an absolute flux threshold.

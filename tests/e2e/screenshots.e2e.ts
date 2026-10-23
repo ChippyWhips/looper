@@ -25,6 +25,37 @@ const STATES: State[] = [
 		}
 	},
 	{
+		name: 'loop-on',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.evaluate(() => {
+				const app = window.looper;
+				const sr = app.track.sampleRate;
+				app.setLoopRange(Math.round(42.118 * sr), Math.round(51.902 * sr), true);
+				app.loop.selected = 'in';
+				app.seek(Math.round(45.2 * sr));
+				app.zoomToLoop();
+			});
+			await page.waitForTimeout(900);
+		}
+	},
+	{
+		name: 'loop-off',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.evaluate(() => {
+				const app = window.looper;
+				const sr = app.track.sampleRate;
+				app.setLoopRange(Math.round(42.118 * sr), Math.round(51.902 * sr), true);
+				app.toggleLoop();
+				app.seek(Math.round(60 * sr));
+			});
+			await page.waitForTimeout(900);
+		}
+	},
+	{
 		name: 'sample-zoom',
 		setup: async (page) => {
 			await page.goto('/?test');

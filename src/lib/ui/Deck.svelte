@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { App } from '../state/app.svelte';
+	import LoopModule from './deck/LoopModule.svelte';
 	import Transport from './deck/Transport.svelte';
 
 	interface Props {
@@ -10,7 +11,7 @@
 
 <footer class="deck" data-testid="deck">
 	<Transport {app} />
-	<div class="module loop"></div>
+	<LoopModule {app} />
 	<div class="module speed"></div>
 	<div class="module pitch"></div>
 	<div class="viz"></div>

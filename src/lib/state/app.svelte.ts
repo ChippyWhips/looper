@@ -2,6 +2,10 @@ import { Engine } from '../audio/engine';
 import type { PeakLevel } from '../analysis/peaks';
 import PeaksWorker from '../analysis/peaks.worker.ts?worker';
 import type { PeaksResponse } from '../analysis/peaks.worker';
+import OnsetsWorker from '../analysis/onsets.worker.ts?worker';
+import type { OnsetsResponse } from '../analysis/onsets.worker';
+import { nearestZeroCrossing } from '../analysis/zero-crossing';
+import type { Edge } from './loop.svelte';
 import { LoopState } from './loop.svelte';
 import { TrackState } from './track.svelte';
 import { TransportState } from './transport.svelte';
@@ -111,8 +115,167 @@ export class App {
 		);
 	}
 
-	/** Called when the mono downmix is ready (onsets, tempo). */
-	protected onMono(): void {}
+	/** Mono downmix ready: start onset detection (and tempo, phase 4). */
+	protected onMono(): void {
+		const mono = this.track.mono;
+		if (!mono) return;
+		const seq = this.openSeq;
+		const w = new OnsetsWorker();
+		w.onmessage = (e: MessageEvent<OnsetsResponse>) => {
+			w.terminate();
+			if (seq !== this.openSeq) return;
+			this.track.onsets = e.data.onsets;
+			this.track.analysisVersion++;
+		};
+		w.postMessage({ mono: mono.slice(), sampleRate: this.track.sampleRate });
+		this.onMonoExtra(mono, seq);
+	}
+
+	protected onMonoExtra(_mono: Float32Array, _seq: number): void {}
+
+	// Loop
+
+	private get zcRadius(): number {
+		return Math.round(0.002 * this.track.sampleRate);
+	}
+
+	private get snapSignal(): Float32Array | null {
+		return this.track.mono ?? this.track.channels?.[0] ?? null;
+	}
+
+	/** Snap a dragged position: onset within 8 px, else zero crossing within ±2 ms. */
+	snap(frame: number, alt: boolean): number {
+		const f = Math.round(frame);
+		if (alt || !this.loop.snap) return this.clampFrame(f);
+		const on = this.track.onsets;
+		if (on && on.length) {
+			const r = 8 * this.viewport.fpp;
+			const i = lowerBound(on, f);
+			let best = -1;
+			let bd = Infinity;
+			for (const j of [i - 1, i]) {
+				if (j < 0 || j >= on.length) continue;
+				const d = Math.abs(on[j] - f);
+				if (d < bd) {
+					bd = d;
+					best = on[j];
+				}
+			}
+			if (best >= 0 && bd <= r) return best;
+		}
+		return this.snapZero(f);
+	}
+
+	/** Zero-crossing snap only (typed values). */
+	snapZero(frame: number, dir: -1 | 0 | 1 = 0): number {
+		const x = this.snapSignal;
+		const f = this.clampFrame(Math.round(frame));
+		if (!x || !this.loop.snap) return f;
+		return nearestZeroCrossing(x, f, this.zcRadius, dir) ?? f;
+	}
+
+	private clampFrame(f: number): number {
+		return Math.max(0, Math.min(this.track.length, Math.round(f)));
+	}
+
+	private get minLoop(): number {
+		return Math.max(1, Math.round(0.001 * this.track.sampleRate));
+	}
+
+	private syncLoop(): void {
+		this.engine.setLoop({ start: this.loop.start, end: this.loop.end, on: this.loop.on });
+	}
+
+	/** Set the whole region; turning looping on when a region is newly created. */
+	setLoopRange(a: number, b: number, enable = false): void {
+		if (!this.track.loaded) return;
+		let start = this.clampFrame(Math.min(a, b));
+		let end = this.clampFrame(Math.max(a, b));
+		if (end - start < this.minLoop) {
+			end = Math.min(this.track.length, start + this.minLoop);
+			start = Math.max(0, end - this.minLoop);
+		}
+		const created = !this.loop.exists;
+		this.loop.start = start;
+		this.loop.end = end;
+		if (enable || created) this.loop.on = true;
+		this.syncLoop();
+	}
+
+	/** Move one edge. An edge cannot cross the other. */
+	setEdge(edge: Edge, frame: number): void {
+		if (!this.track.loaded) return;
+		const f = this.clampFrame(frame);
+		if (!this.loop.exists) {
+			if (edge === 'in') this.setLoopRange(f, this.track.length);
+			else this.setLoopRange(0, f);
+			return;
+		}
+		if (edge === 'in') this.loop.start = Math.min(f, this.loop.end - this.minLoop);
+		else this.loop.end = Math.max(f, this.loop.start + this.minLoop);
+		this.loop.start = Math.max(0, this.loop.start);
+		this.loop.end = Math.min(this.track.length, this.loop.end);
+		this.syncLoop();
+	}
+
+	/** Move the region keeping its length. */
+	moveLoop(start: number): void {
+		const len = this.loop.length;
+		const s = Math.max(0, Math.min(this.track.length - len, Math.round(start)));
+		this.loop.start = s;
+		this.loop.end = s + len;
+		this.syncLoop();
+	}
+
+	/** I / O: set an edge at the playhead (snapped). */
+	setEdgeAtPlayhead(edge: Edge): void {
+		if (!this.track.loaded) return;
+		this.setEdge(edge, this.snapZero(this.position()));
+		this.loop.selected = edge;
+	}
+
+	toggleLoop(): void {
+		if (!this.track.loaded || !this.loop.exists) return;
+		this.loop.on = !this.loop.on;
+		this.syncLoop();
+	}
+
+	toggleSnap(): void {
+		this.loop.snap = !this.loop.snap;
+	}
+
+	/** ← / → on a selected edge: 1 ms (Shift 10 ms) snapped onwards; Alt: 1 sample unsnapped. */
+	nudge(dir: -1 | 1, shift: boolean, alt: boolean): void {
+		const edge = this.loop.selected;
+		if (!edge || !this.loop.exists) return;
+		const cur = edge === 'in' ? this.loop.start : this.loop.end;
+		const sr = this.track.sampleRate;
+		const step = alt ? 1 : Math.round((shift ? 0.01 : 0.001) * sr);
+		let target = cur + dir * step;
+		if (!alt && this.loop.snap && this.snapSignal) {
+			const x = this.snapSignal;
+			let z = nearestZeroCrossing(x, target, this.zcRadius);
+			if (z === null || (z - cur) * dir <= 0) {
+				z = nearestZeroCrossing(x, cur, step + this.zcRadius, dir);
+			}
+			if (z !== null) target = z;
+		}
+		this.setEdge(edge, target);
+	}
+
+	/** Typed or scrubbed In / Out (frames): exact, then zero-crossing snap unless Alt. */
+	setEdgeValue(edge: Edge, frames: number, opts: { typed: boolean; alt: boolean }): void {
+		const cur = edge === 'in' ? this.loop.start : this.loop.end;
+		let f = Math.round(frames);
+		if (!opts.alt)
+			f = opts.typed ? this.snapZero(f) : this.snapZero(f, f > cur ? 1 : f < cur ? -1 : 0);
+		this.setEdge(edge, f);
+	}
+
+	/** Typed Length moves Out. */
+	setLengthValue(frames: number, opts: { typed: boolean; alt: boolean }): void {
+		this.setEdgeValue('out', this.loop.start + frames, opts);
+	}
 
 	togglePlay(): void {
 		if (!this.track.loaded) return;
@@ -153,12 +316,29 @@ export class App {
 	}
 
 	/** ← / →: nudge the selected edge, else seek 1 s (Shift 5 s). */
-	arrow(dir: number, shift: boolean, _alt: boolean): void {
-		this.seekBy(dir * (shift ? 5 : 1));
+	arrow(dir: -1 | 1, shift: boolean, alt: boolean): void {
+		if (this.loop.selected && this.loop.exists) this.nudge(dir, shift, alt);
+		else this.seekBy(dir * (shift ? 5 : 1));
 	}
 
-	/** Loop shortcuts (phase 3). */
-	loopKey(_e: KeyboardEvent): boolean {
+	loopKey(e: KeyboardEvent): boolean {
+		switch (e.code) {
+			case 'KeyL':
+				this.toggleLoop();
+				return true;
+			case 'KeyI':
+				this.setEdgeAtPlayhead('in');
+				return true;
+			case 'KeyO':
+				this.setEdgeAtPlayhead('out');
+				return true;
+			case 'BracketLeft':
+				if (this.loop.exists) this.loop.selected = 'in';
+				return true;
+			case 'BracketRight':
+				if (this.loop.exists) this.loop.selected = 'out';
+				return true;
+		}
 		return false;
 	}
 
@@ -199,4 +379,15 @@ export class App {
 		}
 		return ph;
 	}
+}
+
+function lowerBound(a: Int32Array, v: number): number {
+	let lo = 0;
+	let hi = a.length;
+	while (lo < hi) {
+		const m = (lo + hi) >> 1;
+		if (a[m] < v) lo = m + 1;
+		else hi = m;
+	}
+	return lo;
 }

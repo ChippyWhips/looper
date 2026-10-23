@@ -337,7 +337,8 @@ export function drawOverview(canvas: HTMLCanvasElement, s: OverviewScene): void 
 		ctx.fillRect(xf(loop.end), 0, px, H);
 	}
 	if (s.playhead !== null) {
-		ctx.fillStyle = s.colors.accent;
+		// Muted, not accent: the main playhead is the accent mark.
+		ctx.fillStyle = s.colors.edgeOff;
 		ctx.fillRect(xf(s.playhead), 0, px, H);
 	}
 	if (!vp.isFit) {
