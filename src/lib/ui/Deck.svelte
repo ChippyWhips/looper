@@ -4,6 +4,7 @@
 	import PitchModule from './deck/PitchModule.svelte';
 	import SpeedModule from './deck/SpeedModule.svelte';
 	import Transport from './deck/Transport.svelte';
+	import Visualiser from './Visualiser.svelte';
 
 	interface Props {
 		app: App;
@@ -16,7 +17,7 @@
 	<LoopModule {app} />
 	<SpeedModule {app} />
 	<PitchModule {app} />
-	<div class="viz"></div>
+	<Visualiser {app} />
 </footer>
 
 <style>

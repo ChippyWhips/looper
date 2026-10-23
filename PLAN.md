@@ -63,10 +63,10 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 5: Visualiser
 
-- [ ] AnalyserNode (2048) after stretcher; low/mid/high/RMS features, attack 40 ms / release 300 ms
-- [ ] WebGL2 mesh gradient + grain, 0.5× resolution, 60 fps cap, hidden stop, 10 fps paused
-- [ ] Reduced motion (1 fps static), WebGL2 fallback static frame
-- [ ] Verify + fps trace + commit `phase 5`
+- [x] AnalyserNode (2048) after stretcher; low/mid/high/RMS features, attack 40 ms / release 300 ms
+- [x] WebGL2 mesh gradient + grain, 0.5× resolution, 60 fps cap, hidden stop, 10 fps paused
+- [x] Reduced motion (1 fps static), WebGL2 fallback static frame
+- [x] Verify + fps trace + commit `phase 5`
 
 ## Phase 6: Persistence
 
@@ -117,3 +117,10 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - Fixed: modules stacked their content with `space-between`, so the speed slider sat on the bottom edge. All modules now share a three-row grid (header / control / footer): headers, middle controls (In/Out, slider, knob) and footers (Count-in, Length, quick values) line up across the deck.
 - Fixed: in the empty state the `100` detent label was white; disabled labels are now all `--fg-subtle`.
 - Accent marks with loop and count-in on: playhead (+ ruler dot), Loop dot, Count-in dot = 3.
+
+### Phase 5
+
+- Visualiser fills its 280 px cell edge to edge, no label/border/radius. Soft grainy ember fields over near-black; the only colour on screen besides the accent marks.
+- Fixed: first pass was a flat bright red wash when playing (fields too large, tonemap too hot). Reduced field radii/weights and tonemap gain; dark areas now remain, as in refs 01/02.
+- Paused exposure 0.5 vs ~0.9 playing (≈ 40–55 % brightness after tonemap); paused render rate 9.5 fps, playing 60 fps; reduced motion 1 fps; WebGL2-less fallback draws a static 2D frame.
+- Grain is rendered at 0.5× resolution as specified, so it reads slightly coarse at 1×; acceptable.

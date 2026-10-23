@@ -56,3 +56,11 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 - **Knob detent** is a 12 px dead band (±6 px) around 0 in drag space; crossing it costs 6 px. Alt drags straight through.
 - **Beat indicator** lights the Count-in dot for 100 ms from each click's audible time (click time + output latency), instant on and off, driven from the rAF loop.
 - **`,` / `.` below 50 % or above 100 %** go to the nearest preset in that direction and stop at the ends of the preset list; Shift steps 1 %.
+
+## Visualiser
+
+- **Feature scaling.** Band powers are mapped to 0..1 on fixed dB windows (low −70…−20, mid −80…−30, high −90…−40 dBFS; RMS −40…−6 dBFS) and smoothed with one-pole envelopes (attack 40 ms, release 300 ms). Exposure additionally slews at most 1.5 per second, so loud transients cannot strobe.
+- **Five fields**: a large `--viz-1` wash, the largest deep `--viz-2` field (swells with low energy), a `--viz-3` field, a smaller `--viz-2` field and a small `--viz-4` highlight lifted by high energy. Mid energy speeds up the motion (time integrates at up to 3.5× the paused rate) and drives a domain warp. Base colour is `--bg-sunken`.
+- **Paused drift**: one primary cycle per 20 s; exposure 0.5.
+- **Reduced motion**: time is frozen and the frame re-renders once a second.
+- **Fallback**: without WebGL2 a static frame is drawn with 2D radial gradients from the same tokens.
