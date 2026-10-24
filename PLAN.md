@@ -104,8 +104,8 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - [x] Recent row: `Re-separate (fine)` (htdemucs_ft)
 - [x] Visualiser drops to 30 fps while separating
 - [x] Tests: mixer switching, mute/solo, cancellation, stem storage + eviction, all with the stub
-- [ ] Measure: 4–5 min track separation time on this M1 in Chromium; UI ≥ 30 fps during separation
-- [ ] Docs + verify + commit
+- [x] Measure separation time on this M1 in Chromium (2-min track per owner: 422 s); UI fps measured: ≥ 30 fps except a 50–80 s stall at start (open issue)
+- [x] Docs + verify + commit
 
 ## Phase 9: Tauri (future, not started)
 

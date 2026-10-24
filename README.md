@@ -98,9 +98,14 @@ They land in `screenshots/phase-7/` at 1280×800 and 1512×982.
 scripts/build-demucs.sh
 ```
 
-WebGPU is required. In Playwright, headed Chromium and WebKit expose a WebGPU adapter; headless Chromium and Firefox do not, so automated tests use a stub separator (`?separator=stub`).
+WebGPU is required. Measured on an M1 in Chromium (model cached): a 2-minute track separates in about 7 minutes (≈3.5× real time; a 4–5 minute song would take roughly 15–19 minutes). The first ~80 s include model upload and shader compilation, during which the page can stop rendering (see Known issues). The model downloads once (84 MB, 333 MB for the fine model) from Hugging Face.
+
+In Playwright, headed Chromium and WebKit expose a WebGPU adapter; headless Chromium and Firefox do not, so automated tests use a stub separator (`?separator=stub`).
 
 ## Known issues
+
+- **Stems in the browser are slow, and the UI can freeze for up to ~80 s when a separation starts** (GPU process saturated while the model uploads and its shaders compile; it renders at 60 fps afterwards). Phase 9 moves separation out of the browser. Details in DECISIONS.md, Open issues.
+- **Stems don't work in Safari/WebKit yet**: WebGPU is present but demucs-rs's GPU layer (cubecl) crashes there; the app shows `Stems unavailable in this browser`. Firefox has no WebGPU adapter.
 
 - **Start latency.** After pressing play, audio is heard ~120 ms later at 100 % (48 kHz), more at slower speeds: the stretcher's input plus output latency. The playhead holds at the start frame until then, so it never lies. See DECISIONS.md.
 - **Real-device performance is unmeasured.** Budgets were verified with headless Chromium traces on this machine, not in Dia on the target M1.
