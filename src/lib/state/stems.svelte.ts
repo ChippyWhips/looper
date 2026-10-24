@@ -164,10 +164,15 @@ export class StemsController {
 			(set) => {
 				if (seq === this.seq && this.job === job) void this.install(id, set, seq);
 			},
-			() => {
+			async () => {
 				if (seq !== this.seq || this.job !== job) return;
-				this.status = job.status === 'stopped' ? 'stopped' : 'failed';
 				this.job = null;
+				if (job.status === 'stopped') {
+					this.status = 'stopped';
+					return;
+				}
+				const avail = await this.separator.availability();
+				if (seq === this.seq) this.status = avail === 'unavailable' ? 'unavailable' : 'failed';
 			}
 		);
 	}

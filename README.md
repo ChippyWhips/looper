@@ -55,7 +55,7 @@ They land in `screenshots/phase-7/` at 1280×800 and 1512×982.
 - **Loop editing**: drag to create, drag edges or the band, onset and zero-crossing snapping (Alt bypasses), edge selection and nudging (1 ms, 10 ms, 1 sample), typed `m:ss.mmm` In/Out/Length, loop toggle that keeps the region.
 - **Control deck**: transport with 28 px readout, count-in and tempo; loop module; stepped speed slider with detents; bipolar pitch knob with radial ticks and quick values; WebGL2 audio-reactive gradient visualiser.
 - **Persistence** (`src/lib/storage/`): OPFS via a worker with sync access handles; each track stored under the SHA-256 of its bytes with peaks, onsets, tempo and versioned `settings.json`; Recent list of 3 with eviction; the last track reopens paused at its last position.
-- **Stem separation seams** (phase 8 not built): `AudioSource` list and N-source mixer with mute/solo and 20 ms crossfaded set changes, `Separator` / `StemSet` / `SeparationJob` types with a `NullSeparator`, an N-lane waveform view model sharing one viewport, and a reserved `stems/` directory per track.
+- **Stem separation** (phase 8, branch `stems`): demucs-rs (`htdemucs_6s`) compiled to WebAssembly and run on WebGPU in a dedicated worker, behind a transport-agnostic `Separator` interface selected in one place (`src/lib/separation/index.ts`). Separation starts in the background when a track without stems opens, with progress and `Stop` in the top bar; opening another track cancels it. Stems are stored as 16-bit PCM with peaks in the track's OPFS directory and restored on reopen. Each audible stem gets a lane with `M` / `S`; with nothing muted or soloed the original mix plays, and switching crossfades at the same source frame. `Re-separate (fine)` runs `htdemucs_ft`. The model (84 MB) downloads once into Cache Storage.
 
 ## Feature checklist
 
@@ -90,6 +90,16 @@ They land in `screenshots/phase-7/` at 1280×800 and 1512×982.
 | Visual design | Tokens (two tiers), lint rule for primitives/raw colours, layout, type, controls, motion tiers              | Done                                                                |
 | Separation    | Seams only (mixer, types, lanes model, storage layout), tested                                              | Done (by design, no separation code)                                |
 
+## Stem separation runtime
+
+`vendor/demucs-wasm/` holds the compiled demucs-rs wasm (v0.3.5) so the app builds without Rust. To rebuild it you need `rustup` (stable, `wasm32-unknown-unknown`) and `wasm-bindgen-cli` 0.2.108:
+
+```bash
+scripts/build-demucs.sh
+```
+
+WebGPU is required. In Playwright, headed Chromium and WebKit expose a WebGPU adapter; headless Chromium and Firefox do not, so automated tests use a stub separator (`?separator=stub`).
+
 ## Known issues
 
 - **Start latency.** After pressing play, audio is heard ~120 ms later at 100 % (48 kHz), more at slower speeds: the stretcher's input plus output latency. The playhead holds at the start frame until then, so it never lies. See DECISIONS.md.
@@ -103,6 +113,6 @@ They land in `screenshots/phase-7/` at 1280×800 and 1512×982.
 ## Suggested next steps
 
 1. Measure the budgets in Dia on the M1 and in real Safari; tune the Signalsmith block size if start latency matters more than stretch quality.
-2. Phase 8 stem separation: implement a `Separator` (demucs-rs on WebGPU first), render the extra lanes from `WaveView.lanes`, and add the `Stems` status to the top bar.
+2. Phase 9: move into Tauri and run demucs-rs natively on Metal behind the same `Separator`, with a native track store and bundled model (see PLAN.md).
 3. Reschedule count-in clicks when speed changes mid-count, and optionally align the count-in to detected beat phase.
 4. A light theme by adding a second semantic mapping under `:root[data-theme="light"]`.

@@ -59,8 +59,7 @@ function rng(seed: number) {
 }
 
 /** 5-minute 120 BPM "song": kick, hats, a chord per bar and a slow noise pad. */
-function song(sr: number): Channels {
-	const seconds = 300;
+function song(sr: number, seconds = 300): Channels {
 	const frames = seconds * sr;
 	const l = new Float32Array(frames);
 	const r = new Float32Array(frames);
@@ -147,7 +146,9 @@ const fixtures: Record<string, (sr: number) => Channels> = {
 	silence: (sr) => stereo(5 * sr, () => 0, sr),
 	'dc-sine': (sr) =>
 		stereo(5 * sr, (i, s) => 0.3 + 0.4 * Math.sin((2 * Math.PI * 440 * i) / s), sr),
-	song
+	song,
+	/** Shorter song for separation timing (the runtime takes several times real time). */
+	'song-2min': (sr) => song(sr, 120)
 };
 
 mkdirSync(OUT, { recursive: true });

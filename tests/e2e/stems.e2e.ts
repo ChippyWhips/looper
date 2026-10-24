@@ -128,6 +128,14 @@ test.describe('stems @stems', () => {
 		expect(await page.evaluate(() => window.looper.stems.model)).toBe('htdemucs_ft');
 	});
 
+	test('a runtime that crashes is reported as unavailable, not retried', async ({ app: page }) => {
+		await page.goto('/?test&separator=stub-broken');
+		await loadFixture(page, 'sine-440-48000.wav');
+		await expect(page.getByTestId('stems-status')).toHaveText('Stems unavailable in this browser', {
+			timeout: 5000
+		});
+	});
+
 	test('without a separator the top bar says stems are unavailable', async ({ app: page }) => {
 		await page.goto('/?test&separator=none');
 		await loadFixture(page, 'sine-440-48000.wav');

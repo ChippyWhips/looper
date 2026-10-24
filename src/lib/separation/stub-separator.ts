@@ -16,6 +16,8 @@ export interface StubOptions {
 	durationMs?: number;
 	steps?: number;
 	fail?: boolean;
+	/** After failing, report 'unavailable' (as a crashed runtime does). */
+	breaks?: boolean;
 }
 
 /**
@@ -25,10 +27,11 @@ export interface StubOptions {
  */
 export class StubSeparator implements Separator {
 	calls = 0;
+	private broken = false;
 	constructor(private o: StubOptions = {}) {}
 
 	async availability() {
-		return 'gpu' as const;
+		return this.broken ? ('unavailable' as const) : ('gpu' as const);
 	}
 
 	async separate(
@@ -46,7 +49,10 @@ export class StubSeparator implements Separator {
 			if (signal.aborted) throw abortError();
 			onProgress({ fraction: (i + 1) / steps, stage: 'separate', slow: false });
 		}
-		if (this.o.fail) throw new Error('stub failure');
+		if (this.o.fail || this.o.breaks) {
+			if (this.o.breaks) this.broken = true;
+			throw new Error('stub failure');
+		}
 		const split: [StemName, number][] =
 			model === 'htdemucs_ft'
 				? [

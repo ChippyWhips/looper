@@ -23,10 +23,13 @@ const MODEL_SHARE = 0.1;
  */
 export class BrowserSeparator implements Separator {
 	private avail: Promise<SeparatorAvailability> | null = null;
+	/** Set when the runtime itself crashes (e.g. WebKit: cubecl cannot map a timing buffer). */
+	private broken = false;
 
 	constructor(private models: ModelStore) {}
 
 	availability(): Promise<SeparatorAvailability> {
+		if (this.broken) return Promise.resolve('unavailable');
 		this.avail ??= (async () => {
 			const gpu = (navigator as unknown as GpuNavigator).gpu;
 			if (!gpu) return 'unavailable';
@@ -61,7 +64,10 @@ export class BrowserSeparator implements Separator {
 				(resolve, reject) => {
 					const abort = () => reject(abortError());
 					signal.addEventListener('abort', abort, { once: true });
-					worker.onerror = (e) => reject(new Error(e.message || 'separation worker failed'));
+					worker.onerror = (e) => {
+						if (/unreachable|panicked/i.test(e.message ?? '')) this.broken = true;
+						reject(new Error(e.message || 'separation worker failed'));
+					};
 					worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
 						const m = e.data;
 						if (m.type === 'progress')
@@ -71,7 +77,11 @@ export class BrowserSeparator implements Separator {
 								slow: false
 							});
 						else if (m.type === 'done') resolve(m);
-						else reject(new Error(m.message));
+						else {
+							// A wasm panic means this browser's WebGPU cannot run the model; stop offering it.
+							if (/unreachable|panicked/i.test(m.message)) this.broken = true;
+							reject(new Error(m.message));
+						}
 					};
 					worker.postMessage(
 						{
