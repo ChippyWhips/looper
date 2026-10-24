@@ -101,6 +101,33 @@ const STATES: State[] = [
 		}
 	},
 	{
+		name: 'stems-running',
+		setup: async (page) => {
+			await page.goto('/?test&separator=stub-slow');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.waitForTimeout(2500);
+		}
+	},
+	{
+		name: 'stems',
+		setup: async (page) => {
+			await page.goto('/?test&separator=stub');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.waitForFunction(() => window.looper.stems.status === 'done', null, {
+				timeout: 20000
+			});
+			await page.evaluate(() => {
+				const app = window.looper;
+				const sr = app.track.sampleRate;
+				app.setLoopRange(Math.round(42.118 * sr), Math.round(51.902 * sr), true);
+				app.seek(Math.round(45.2 * sr));
+				app.zoomToLoop();
+				app.stems.toggleMute('guitar');
+			});
+			await page.waitForTimeout(1200);
+		}
+	},
+	{
 		name: 'sample-zoom',
 		setup: async (page) => {
 			await page.goto('/?test');

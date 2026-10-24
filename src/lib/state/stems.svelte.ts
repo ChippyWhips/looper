@@ -202,9 +202,10 @@ export class StemsController {
 			channels: 2,
 			stems: ordered.map((s) => ({ name: s.name, rmsDb: s.rmsDb }))
 		};
-		const peaks = new Map(
-			ordered.map((s, i) => [s.name, { length: set.length, levels: levels[i] }])
-		);
+		const peaks = ordered.map((s, i) => ({
+			name: s.name,
+			peaks: { length: set.length, levels: levels[i] }
+		}));
 		await this.app.store
 			.saveStems(id, meta, ordered, peaks)
 			.catch((e) => console.warn('stems save', e));
@@ -317,15 +318,13 @@ export class StemsController {
 	}
 
 	/** Lanes whose audio is in the current output. */
-	audibleNames(): Set<StemName> {
+	audibleNames(): StemName[] {
 		const targets = resolveTargets([
 			{ id: 'mix', kind: 'mix', label: 'Mix', gain: 1, muted: false, soloed: false },
 			...this.states()
 		]);
-		if ((targets.get('mix') ?? 0) > 0) return new Set(this.lanes.map((l) => l.name));
-		return new Set(
-			this.lanes.filter((l) => (targets.get(sourceId(l.name)) ?? 0) > 0).map((l) => l.name)
-		);
+		if ((targets.get('mix') ?? 0) > 0) return this.lanes.map((l) => l.name);
+		return this.lanes.filter((l) => (targets.get(sourceId(l.name)) ?? 0) > 0).map((l) => l.name);
 	}
 
 	/** Push mute/solo to the engine and refresh the audible waveform. */
@@ -356,7 +355,7 @@ export class StemsController {
 		const active = this.audibleNames();
 		const stems: Int16Array[][] = [];
 		for (const l of this.lanes) {
-			if (!active.has(l.name)) continue;
+			if (!active.includes(l.name)) continue;
 			const pcm = await this.app.store.loadStemPcm(id, l.name, meta).catch(() => null);
 			if (pcm) stems.push(pcm);
 		}
@@ -370,7 +369,10 @@ export class StemsController {
 				width: Math.max(1280, this.app.viewport.width)
 			},
 			'sum',
-			[...new Set(stems.flat().map((c) => c.buffer))]
+			stems
+				.flat()
+				.map((c) => c.buffer)
+				.filter((b, i, a) => a.indexOf(b) === i)
 		);
 		if (seq !== this.audibleSeq) return;
 		const t = this.app.track;

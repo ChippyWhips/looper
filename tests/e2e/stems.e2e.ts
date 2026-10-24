@@ -31,7 +31,7 @@ test.describe('stems @stems', () => {
 		// Mute guitar: stems play; the main waveform switches to the stem sum.
 		await page.getByRole('button', { name: 'Mute Guitar' }).click();
 		expect(await lanes(page)).toEqual(['vocals', 'guitar:m', 'bass']);
-		expect(await page.evaluate(() => [...window.looper.stems.audibleNames()].sort())).toEqual([
+		expect(await page.evaluate(() => window.looper.stems.audibleNames().sort())).toEqual([
 			'bass',
 			'vocals'
 		]);
@@ -46,7 +46,7 @@ test.describe('stems @stems', () => {
 
 		// Solo bass: only bass.
 		await page.getByRole('button', { name: 'Solo Bass' }).click();
-		expect(await page.evaluate(() => [...window.looper.stems.audibleNames()])).toEqual(['bass']);
+		expect(await page.evaluate(() => window.looper.stems.audibleNames())).toEqual(['bass']);
 		// Clear both: back to the mix.
 		await page.getByRole('button', { name: 'Solo Bass' }).click();
 		await page.getByRole('button', { name: 'Mute Guitar' }).click();

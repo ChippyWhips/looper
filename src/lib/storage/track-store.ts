@@ -229,7 +229,7 @@ export class TrackStore {
 		id: string,
 		meta: StemMeta,
 		stems: StemPcm[],
-		peaks: Map<StemName, Peaks>
+		peaks: { name: StemName; peaks: Peaks }[]
 	): Promise<void> {
 		await this.clearStems(id);
 		for (const s of stems) {
@@ -239,7 +239,7 @@ export class TrackStore {
 			await this.call({ op: 'write', path: [...TRACKS, id, 'stems', `${s.name}.pcm`], data }, [
 				data
 			]);
-			const p = peaks.get(s.name);
+			const p = peaks.find((x) => x.name === s.name)?.peaks;
 			if (p) {
 				const pd = encodePeaks(p);
 				await this.call(

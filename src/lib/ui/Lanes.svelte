@@ -38,7 +38,7 @@
 				l.end,
 				l.on,
 				app.stems.version,
-				app.stems.lanes.map((x) => `${x.name}${audible.has(x.name)}`).join(),
+				app.stems.lanes.map((x) => `${x.name}${audible.includes(x.name)}`).join(),
 				canvas.clientWidth,
 				canvas.clientHeight
 			].join('|');
@@ -46,7 +46,10 @@
 			last = key;
 			drawLanes(canvas, {
 				viewport: vp,
-				lanes: app.stems.lanes.map((x) => ({ levels: x.levels, audible: audible.has(x.name) })),
+				lanes: app.stems.lanes.map((x) => ({
+					levels: x.levels,
+					audible: audible.includes(x.name)
+				})),
 				laneHeight: LANE_H,
 				loop: l.exists ? { start: l.start, end: l.end, on: l.on, selected: null } : null,
 				playhead: ph,
@@ -140,13 +143,14 @@
 		border-top: var(--line) solid var(--border-subtle);
 		display: flex;
 		align-items: center;
-		gap: var(--s2);
-		padding: 0 var(--s3) 0 var(--s4);
+		gap: var(--s1);
+		padding: 0 var(--s2) 0 var(--s4);
 		background: var(--bg-sunken);
 		border-right: var(--line) solid var(--border-subtle);
 	}
 	.name {
 		flex: 1;
+		margin-right: var(--s1);
 		min-width: 0;
 		font-size: var(--fs-sm);
 		line-height: var(--lh-sm);

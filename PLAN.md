@@ -89,21 +89,21 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 8: Stem separation (branch `stems`)
 
-- [ ] Runtime: build `demucs-wasm` (demucs-rs, Apache-2.0, pinned commit) with wasm-pack; vendor the `.wasm` + JS glue under `vendor/demucs-wasm/` with a rebuild script
-- [ ] Prove it in a worker on WebGPU (Chromium); probe WebGPU in Playwright WebKit and Firefox, record results
-- [ ] Separator contract: track ID + planar PCM in; progress `{fraction, stage}`; `AbortSignal` cancel; per-stem Int16 PCM + metadata out. No Workers / GPU / OPFS handles across it
-- [ ] `ModelStore` interface + browser implementation (Cache Storage, one-off download with progress)
-- [ ] Browser runtime module (`separation/browser/`): worker + `BrowserSeparator`; selected only in `separation/index.ts`
-- [ ] `StubSeparator` for tests (deterministic stems that sum to the mix, configurable timing, one near-silent stem)
-- [ ] Track store: `stems/meta.json`, `stems/<name>.pcm` (16-bit), `stems/<name>.peaks`; read/write/delete only via the store; `settings.stems`
-- [ ] Engine: add/remove stem sources at runtime (Int16 in the worklet mixer), mute/solo updates crossfading 20 ms
-- [ ] Jobs: auto-start when a track has no stems; one at a time; cancel on opening another track; Stop → `Separate`; failure → `Stems failed` + `Retry`; unavailable state
-- [ ] Top bar: `● Stems 42%` + `Stop`; `Stems` lanes toggle
-- [ ] Lanes: 40 px each, 96 px gutter (name, `M`, `S`), shared viewport/playhead/loop band, near-silent stems hidden, Slow-tier fade in
-- [ ] Main waveform shows the audible sum (peaks recomputed in a worker on set changes)
-- [ ] Recent row: `Re-separate (fine)` (htdemucs_ft)
-- [ ] Visualiser drops to 30 fps while separating
-- [ ] Tests: mixer switching, mute/solo, cancellation, stem storage + eviction, all with the stub
+- [x] Runtime: build `demucs-wasm` (demucs-rs, Apache-2.0, pinned commit) with wasm-pack; vendor the `.wasm` + JS glue under `vendor/demucs-wasm/` with a rebuild script
+- [x] Prove it in a worker on WebGPU (Chromium); probe WebGPU in Playwright WebKit and Firefox, record results
+- [x] Separator contract: track ID + planar PCM in; progress `{fraction, stage}`; `AbortSignal` cancel; per-stem Int16 PCM + metadata out. No Workers / GPU / OPFS handles across it
+- [x] `ModelStore` interface + browser implementation (Cache Storage, one-off download with progress)
+- [x] Browser runtime module (`separation/browser/`): worker + `BrowserSeparator`; selected only in `separation/index.ts`
+- [x] `StubSeparator` for tests (deterministic stems that sum to the mix, configurable timing, one near-silent stem)
+- [x] Track store: `stems/meta.json`, `stems/<name>.pcm` (16-bit), `stems/<name>.peaks`; read/write/delete only via the store; `settings.stems`
+- [x] Engine: add/remove stem sources at runtime (Int16 in the worklet mixer), mute/solo updates crossfading 20 ms
+- [x] Jobs: auto-start when a track has no stems; one at a time; cancel on opening another track; Stop → `Separate`; failure → `Stems failed` + `Retry`; unavailable state
+- [x] Top bar: `● Stems 42%` + `Stop`; `Stems` lanes toggle
+- [x] Lanes: 40 px each, 96 px gutter (name, `M`, `S`), shared viewport/playhead/loop band, near-silent stems hidden, Slow-tier fade in
+- [x] Main waveform shows the audible sum (peaks recomputed in a worker on set changes)
+- [x] Recent row: `Re-separate (fine)` (htdemucs_ft)
+- [x] Visualiser drops to 30 fps while separating
+- [x] Tests: mixer switching, mute/solo, cancellation, stem storage + eviction, all with the stub
 - [ ] Measure: 4–5 min track separation time on this M1 in Chromium; UI ≥ 30 fps during separation
 - [ ] Docs + verify + commit
 
@@ -183,3 +183,10 @@ What changes when the app moves into a Tauri shell on macOS:
 
 - Deck 250 px with 24 px module padding: rows breathe; pitch quick values still fit at 1280 px.
 - Visualiser: reads as a moving liquid surface in ember, amber, rose and plum; pulses on the kick.
+
+### Phase 8
+
+- Running: `● Stems 48%  Stop` after the title (accent dot, mono 11, text button); finished: a `● Stems` text toggle (primary dot) for the lanes.
+- Lanes: 40 px each with hairlines, 96 px gutter (name sans 13 muted, `M` `S` mono 11, active white), loop band/edges/playhead continuous with the main waveform; muted lane drawn in `--wave-default`. Main waveform switches to the audible stem sum.
+- Fixed: gutter padding truncated "Vocals"; tightened to 16 px left, 8 px right, 4 px between M and S.
+- Accent marks while separating with loop and count-in on: playhead, Loop dot, Count-in dot, Stems dot = 4.
