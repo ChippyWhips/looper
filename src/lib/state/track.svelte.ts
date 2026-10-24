@@ -19,6 +19,9 @@ export class TrackState {
 	peaks: Peaks | null = null;
 	mono: Float32Array | null = null;
 	onsets: Int32Array | null = null;
+	/** What is audible when stems are muted/soloed; null means the mix. */
+	audiblePeaks: Peaks['levels'] | null = null;
+	audibleChannels: Float32Array[] | null = null;
 	file: Blob | null = null;
 
 	get loaded(): boolean {

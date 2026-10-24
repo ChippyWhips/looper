@@ -1,3 +1,5 @@
+import type { SeparationModel, StemName } from '../separation/types';
+
 /** Per-track settings, stored as settings.json. Frames refer to `sampleRate`. */
 export interface SettingsV1 {
 	version: 1;
@@ -9,9 +11,16 @@ export interface SettingsV1 {
 	tempoOverride: number | null;
 	position: number;
 	view: { start: number; fpp: number } | null;
-	/** Reserved for phase 8 stem separation; absent until stems exist. */
-	stems?: { model: string; names: string[] };
+	/** Absent until the track has stems. */
+	stems?: StemsSettings;
 	updatedAt: number;
+}
+
+export interface StemsSettings {
+	model: SeparationModel;
+	names: StemName[];
+	muted: StemName[];
+	soloed: StemName[];
 }
 
 export type Settings = SettingsV1;
@@ -68,7 +77,15 @@ export function migrate(input: unknown, migrations = MIGRATIONS): Settings | nul
 			view && isNum(view.start) && isNum(view.fpp) ? { start: view.start, fpp: view.fpp } : null,
 		updatedAt: isNum(raw.updatedAt) ? raw.updatedAt : 0
 	};
-	if (raw.stems && typeof raw.stems === 'object') out.stems = raw.stems as Settings['stems'];
+	const st = raw.stems as Partial<StemsSettings> | undefined;
+	if (st && typeof st === 'object' && typeof st.model === 'string' && Array.isArray(st.names)) {
+		out.stems = {
+			model: st.model,
+			names: st.names,
+			muted: Array.isArray(st.muted) ? st.muted : [],
+			soloed: Array.isArray(st.soloed) ? st.soloed : []
+		};
+	}
 	return out;
 }
 

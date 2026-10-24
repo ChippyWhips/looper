@@ -5,6 +5,7 @@
 	import Chevron from './icons/Chevron.svelte';
 	import TextButton from './components/TextButton.svelte';
 	import Recent from './Recent.svelte';
+	import TextToggle from './components/TextToggle.svelte';
 
 	interface Props {
 		app: App;
@@ -12,6 +13,7 @@
 	}
 	let { app, onopen }: Props = $props();
 	const t = $derived(app.track);
+	const st = $derived(app.stems);
 </script>
 
 <header class="top">
@@ -31,6 +33,30 @@
 			</button>
 			{#if app.recent.length}
 				<Recent {app} open={app.view.recentOpen} />
+			{/if}
+		</span>
+	{/if}
+	{#if t.loaded}
+		<span class="stems" data-testid="stems-status">
+			{#if st.status === 'running'}
+				<span class="dot" aria-hidden="true"></span>
+				<span class="mono">Stems{st.slow ? ' (slow)' : ''} {Math.floor(st.fraction * 100)}%</span>
+				<TextButton onclick={() => st.stop()} testid="stems-stop">Stop</TextButton>
+			{:else if st.status === 'stopped'}
+				<TextButton onclick={() => st.start()} testid="stems-separate">Separate</TextButton>
+			{:else if st.status === 'failed'}
+				<span class="mono">Stems failed</span>
+				<TextButton onclick={() => st.start()} testid="stems-retry">Retry</TextButton>
+			{:else if st.status === 'unavailable'}
+				<span class="mono subtle">Stems unavailable in this browser</span>
+			{:else if st.hasLanes}
+				<TextToggle
+					label="Stems"
+					on={st.open}
+					dot="primary"
+					onclick={() => (st.open = !st.open)}
+					testid="stems-toggle"
+				/>
 			{/if}
 		</span>
 	{/if}
@@ -93,6 +119,29 @@
 		}
 		&:hover .chev {
 			color: var(--fg-primary);
+		}
+	}
+	.stems {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--s2);
+		& :global(button) {
+			margin-left: var(--s1);
+		}
+	}
+	.dot {
+		width: var(--dot);
+		height: var(--dot);
+		border-radius: 50%;
+		background: var(--accent);
+	}
+	.mono {
+		font-family: var(--font-mono);
+		font-size: var(--fs-xs);
+		line-height: var(--lh-xs);
+		color: var(--fg-muted);
+		&.subtle {
+			color: var(--fg-subtle);
 		}
 	}
 	.actions {

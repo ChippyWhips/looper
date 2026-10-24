@@ -226,10 +226,10 @@ export class Engine {
 
 	/** Hand stem sources to the worklet (buffers are transferred). */
 	addSources(sources: SourcePayload[]): void {
-		const transfer = sources.flatMap((s) =>
-			(s.channels as ArrayBufferView[]).map((c) => c.buffer as ArrayBuffer)
-		);
-		this.send({ type: 'addSources', sources }, transfer);
+		// Channels may share one buffer (planar stems read from storage); list each once.
+		const transfer = new Set<ArrayBuffer>();
+		for (const src of sources) for (const c of src.channels) transfer.add(c.buffer as ArrayBuffer);
+		this.send({ type: 'addSources', sources }, [...transfer]);
 	}
 
 	removeSources(ids: string[]): void {

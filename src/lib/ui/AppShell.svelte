@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { App } from '../state/app.svelte';
 	import Deck from './Deck.svelte';
+	import Lanes from './Lanes.svelte';
 	import Shortcuts from './Shortcuts.svelte';
 	import { handleKey } from './keyboard';
 	import TopBar from './TopBar.svelte';
@@ -96,7 +97,7 @@
 <div class="app">
 	<TopBar {app} onopen={openPicker} />
 	<Waveform {app} {input} />
-	<!-- Stem lanes (phase 8) mount here, between the waveform and the deck. -->
+	<Lanes {app} {input} />
 	<Deck {app} />
 	<Shortcuts {app} />
 	<input
@@ -114,7 +115,7 @@
 <style>
 	.app {
 		display: grid;
-		grid-template-rows: var(--topbar-h) 1fr auto;
+		grid-template-rows: var(--topbar-h) 1fr auto auto;
 		height: 100vh;
 		min-width: 1280px;
 		min-height: 800px;

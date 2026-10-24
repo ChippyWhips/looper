@@ -349,3 +349,82 @@ export function drawOverview(canvas: HTMLCanvasElement, s: OverviewScene): void 
 		ctx.strokeRect(a + px / 2, px / 2, b - a - px, H - px);
 	}
 }
+
+export interface LaneDraw {
+	levels: readonly PeakLevel[];
+	/** False when the lane is not in the current output (muted, or another lane soloed). */
+	audible: boolean;
+}
+
+export interface LanesScene {
+	viewport: Viewport;
+	lanes: readonly LaneDraw[];
+	/** CSS px per lane, excluding the 1 px separator. */
+	laneHeight: number;
+	loop: LoopDraw | null;
+	playhead: number | null;
+	colors: Colors;
+}
+
+/** Stem lanes: one waveform each, sharing the main viewport, loop band and playhead. */
+export function drawLanes(canvas: HTMLCanvasElement, s: LanesScene): void {
+	const dpr = fitCanvas(canvas);
+	const ctx = canvas.getContext('2d')!;
+	const W = canvas.width;
+	const H = canvas.height;
+	const vp = s.viewport;
+	const c = s.colors;
+	ctx.clearRect(0, 0, W, H);
+	const px = Math.max(1, Math.round(dpr));
+	const fppD = vp.fpp / dpr;
+	const x0 = (f: number) => Math.round(((f - vp.start) / vp.fpp) * dpr);
+	const loop = hasLoop(s.loop) ? s.loop : null;
+	if (loop?.on) {
+		const a = Math.max(0, x0(loop.start));
+		const b = Math.min(W, x0(loop.end));
+		if (b > a) {
+			ctx.fillStyle = c.loopBand;
+			ctx.fillRect(a, 0, b - a, H);
+		}
+	}
+	const step = Math.round((s.laneHeight + 1) * dpr);
+	s.lanes.forEach((lane, k) => {
+		const top = k * step + px;
+		const h = step - px;
+		const mid = top + Math.floor(h / 2);
+		const half = (h / 2) * 0.85;
+		ctx.fillStyle = c.zero;
+		ctx.fillRect(0, k * step, W, px);
+		if (!lane.levels.length) return;
+		for (let pass = 0; pass < 2; pass++) {
+			ctx.fillStyle = pass === 0 ? c.waveDefault : c.waveActive;
+			for (let i = 0; i < W; i++) {
+				const a = Math.floor(vp.start + i * fppD);
+				const b = Math.floor(vp.start + (i + 1) * fppD);
+				if (b <= 0 || a >= vp.length) continue;
+				const fm = a + (b - a) / 2;
+				const on = lane.audible && !!loop?.on && fm >= loop.start && fm < loop.end;
+				if (on !== (pass === 1)) continue;
+				rangeMinMax(lane.levels, null, Math.max(0, a), Math.min(vp.length, Math.max(a + 1, b)), mm);
+				if (mm[0] > mm[1]) continue;
+				const t = Math.floor(mid - mm[1] * half);
+				const bt = Math.ceil(mid - mm[0] * half);
+				ctx.fillRect(i, t, 1, Math.max(1, bt - t));
+			}
+		}
+	});
+	if (loop) {
+		ctx.fillStyle = loop.on ? c.loopEdge : c.edgeOff;
+		for (const f of [loop.start, loop.end]) {
+			const x = x0(f);
+			if (x >= -px && x <= W) ctx.fillRect(x, 0, px, H);
+		}
+	}
+	if (s.playhead !== null) {
+		const x = x0(s.playhead);
+		if (x >= -px && x <= W) {
+			ctx.fillStyle = c.accent;
+			ctx.fillRect(x, 0, px, H);
+		}
+	}
+}

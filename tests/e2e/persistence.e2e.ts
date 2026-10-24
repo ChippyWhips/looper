@@ -1,31 +1,5 @@
-import { expect, test as base, type Page } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { loadFixture } from './helpers';
-
-/** Playwright's ephemeral WebKit contexts have no OPFS, so WebKit runs in a persistent context. */
-const test = base.extend<{ app: Page }>({
-	app: async ({ page, browserName, playwright, baseURL }, use) => {
-		if (browserName !== 'webkit') return use(page);
-		const dir = mkdtempSync(join(tmpdir(), 'looper-wk-'));
-		const ctx = await playwright.webkit.launchPersistentContext(dir, {
-			baseURL,
-			viewport: { width: 1280, height: 800 }
-		});
-		const p = ctx.pages()[0] ?? (await ctx.newPage());
-		// WebKit keeps OPFS outside the profile directory, so start from a clean slate.
-		await p.goto('/harness');
-		await p.evaluate(async () => {
-			const root = await navigator.storage.getDirectory();
-			await root.removeEntry('looper', { recursive: true }).catch(() => {});
-			localStorage.clear();
-		});
-		await use(p);
-		await ctx.close();
-		rmSync(dir, { recursive: true, force: true });
-	}
-});
+import { expect, type Page } from '@playwright/test';
+import { loadFixture, test } from './helpers';
 
 const FILES = ['sine-440-48000.wav', 'sine-1k-48000.wav', 'click-120-48000.wav', 'sweep-48000.wav'];
 

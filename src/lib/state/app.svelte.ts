@@ -15,6 +15,7 @@ import { TransportState } from './transport.svelte';
 import { ViewState } from './view.svelte';
 import { TrackStore, type RecentEntry } from '../storage/track-store';
 import { defaultSettings, rescale, type Settings } from '../storage/settings-schema';
+import { StemsController } from './stems.svelte';
 
 const yieldTask = () => new Promise<void>((r) => setTimeout(r, 0));
 
@@ -26,6 +27,7 @@ export class App {
 	readonly transport = new TransportState();
 	readonly view = new ViewState();
 	readonly store = new TrackStore();
+	readonly stems: StemsController;
 	recent = $state<RecentEntry[]>([]);
 	private peaksWorker: Worker | null = null;
 	private openSeq = 0;
@@ -37,6 +39,7 @@ export class App {
 	private beats: number[] = [];
 
 	constructor() {
+		this.stems = new StemsController(this);
 		this.engine.events.state = (s) => (this.transport.state = s);
 		this.engine.events.beats = (times) => (this.beats = times);
 		this.engine.events.error = (m) => console.warn('engine:', m);
@@ -111,6 +114,8 @@ export class App {
 		const t0 = performance.now();
 		const t = this.track;
 		this.flushSave();
+		// Opening a different track cancels any running separation.
+		this.stems.cancel();
 		if (this.transport.playing) this.engine.pause();
 		t.status = 'loading';
 		t.error = '';
@@ -153,6 +158,8 @@ export class App {
 		t.length = buffer.length;
 		t.sampleRate = buffer.sampleRate;
 		t.peaks = peaks && peaks.length === buffer.length ? peaks : null;
+		t.audiblePeaks = null;
+		t.audibleChannels = null;
 		t.mono = null;
 		t.onsets = onsets;
 		this.transport.tempoDetected = analysis?.tempo ?? null;
@@ -182,6 +189,7 @@ export class App {
 			);
 		}
 		void this.analyse(seq, !t.peaks, !t.onsets, analysis === null);
+		void this.stems.attach(id, settings?.stems);
 	}
 
 	private applySettings(s: Settings): void {
@@ -297,6 +305,7 @@ export class App {
 		this.transport.tempoOverride = null;
 		this.viewport.setLength(0);
 		t.analysisVersion++;
+		void this.stems.attach(null);
 	}
 
 	// Persistence
@@ -312,7 +321,8 @@ export class App {
 			countIn: this.transport.countIn,
 			tempoOverride: this.transport.tempoOverride,
 			position: Math.round(this.position()),
-			view: vp.isFit ? null : { start: vp.start, fpp: vp.fpp }
+			view: vp.isFit ? null : { start: vp.start, fpp: vp.fpp },
+			...(this.stems.settings() ? { stems: this.stems.settings() } : {})
 		};
 	}
 

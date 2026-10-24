@@ -27,6 +27,16 @@
 				<span class="name">{e.name}</span>
 				<span class="meta">{formatDuration(e.length, e.sampleRate)} · {mb(e.size)}</span>
 			</button>
+			{#if e.id === app.track.id && app.stems.status !== 'running' && app.stems.status !== 'unavailable'}
+				<button
+					class="action"
+					onclick={() => {
+						app.view.recentOpen = false;
+						app.stems.reseparateFine();
+					}}
+					data-testid="recent-fine">Re-separate (fine)</button
+				>
+			{/if}
 			<button
 				class="remove"
 				aria-label="Remove {e.name}"
@@ -114,8 +124,27 @@
 			color: var(--fg-primary);
 		}
 	}
+	.action {
+		flex: none;
+		font-size: var(--fs-sm);
+		line-height: var(--lh-sm);
+		color: var(--fg-muted);
+		opacity: 0;
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+		&:hover {
+			color: var(--fg-primary);
+		}
+	}
 	.row:hover .remove,
-	.row:focus-within .remove {
+	.row:focus-within .remove,
+	.row:hover .action,
+	.row:focus-within .action {
 		opacity: 1;
+	}
+	/* On hover the action takes the metadata's place. */
+	.row:has(.action):hover .meta {
+		display: none;
 	}
 </style>

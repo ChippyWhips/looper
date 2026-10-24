@@ -74,7 +74,7 @@
 			].join('|');
 			if (key === last) return;
 			last = key;
-			const levels = t.peaks?.levels ?? [];
+			const levels = t.audiblePeaks ?? t.peaks?.levels ?? [];
 			const loopDraw =
 				input.preview ??
 				(l.exists ? { start: l.start, end: l.end, on: l.on, selected: l.selected } : null);
@@ -83,7 +83,7 @@
 			drawMain(main, {
 				viewport: vp,
 				levels,
-				channels: t.channels,
+				channels: t.audibleChannels ?? t.channels,
 				sampleRate: t.sampleRate,
 				loop: loopDraw,
 				playhead: ph,

@@ -134,6 +134,10 @@ export class TrackStore {
 		return this.call({ op: 'list', path: TRACKS });
 	}
 
+	listStems(id: string): Promise<string[]> {
+		return this.call({ op: 'list', path: [...TRACKS, id, 'stems'] });
+	}
+
 	listTrack(id: string): Promise<string[]> {
 		return this.call({ op: 'list', path: [...TRACKS, id] });
 	}

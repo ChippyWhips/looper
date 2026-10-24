@@ -21,8 +21,10 @@ export function levelCount(length: number, width = 1280): number {
 	return n;
 }
 
-/** Bucket min/max straight from samples. */
-export function levelFromSamples(channels: readonly Float32Array[], size: number): PeakLevel {
+export type PcmChannel = Float32Array | Int16Array;
+
+/** Bucket min/max straight from samples; Int16 input is scaled to ±1. */
+export function levelFromSamples(channels: readonly PcmChannel[], size: number): PeakLevel {
 	const length = channels[0]?.length ?? 0;
 	const n = Math.ceil(length / size);
 	const data = new Float32Array(n * 2);
@@ -41,6 +43,7 @@ export function levelFromSamples(channels: readonly Float32Array[], size: number
 		data[b * 2] = lo;
 		data[b * 2 + 1] = hi;
 	}
+	if (channels[0] instanceof Int16Array) for (let i = 0; i < data.length; i++) data[i] /= 32768;
 	return { size, data };
 }
 
@@ -64,7 +67,7 @@ export function coarsen(level: PeakLevel): PeakLevel {
 	return { size: level.size * 2, data };
 }
 
-export function computePeaks(channels: readonly Float32Array[], levels?: number): Peaks {
+export function computePeaks(channels: readonly PcmChannel[], levels?: number): Peaks {
 	const length = channels[0]?.length ?? 0;
 	const n = levels ?? levelCount(length);
 	const out: PeakLevel[] = [levelFromSamples(channels, BASE_BUCKET)];

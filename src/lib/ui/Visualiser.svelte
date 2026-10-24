@@ -46,7 +46,9 @@
 			raf = requestAnimationFrame(frame);
 			if (document.hidden) return;
 			const playing = app.transport.state === 'playing';
-			const minGap = reduce.matches ? 1000 : playing ? 1000 / 60 - 1 : 100;
+			// Separation shares the GPU: allow the visualiser to drop to 30 fps meanwhile.
+			const fps = app.stems.running ? 30 : 60;
+			const minGap = reduce.matches ? 1000 : playing ? 1000 / fps - 1 : 100;
 			if (now - lastDraw < minGap) return;
 			const dt = Math.min(250, last ? now - last : 16);
 			last = now;
