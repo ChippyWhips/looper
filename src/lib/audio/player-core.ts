@@ -1,5 +1,10 @@
 import { clickSample, planCountIn } from './countin';
-import type { FromWorklet, ToWorklet, TransportState } from './protocol';
+import {
+	POSITION_COMMANDS,
+	type FromWorklet,
+	type ToWorklet,
+	type TransportState
+} from './protocol';
 import { Reader } from './reader';
 import { Mixer, type AudioSource } from './sources';
 import type { Stretcher } from './stretcher/types';
@@ -84,7 +89,10 @@ export class PlayerCore {
 		return this.labels[i & RMASK];
 	}
 
+	private epoch = 0;
+
 	private apply(msg: ToWorklet, frame: number): void {
+		if ((POSITION_COMMANDS as readonly string[]).includes(msg.type)) this.epoch++;
 		switch (msg.type) {
 			case 'load': {
 				const sources: AudioSource[] = msg.sources.map((s) => ({ ...s }));
@@ -219,7 +227,8 @@ export class PlayerCore {
 					(stopped ? frame : a.frame) / this.sampleRate + (stopped ? 0 : this.outLatency),
 				sourceFrame: stopped ? this.pausedFrame : a.label,
 				velocity: stopped ? 0 : a.velocity,
-				state: this.state
+				state: this.state,
+				epoch: this.epoch
 			});
 		}
 	}

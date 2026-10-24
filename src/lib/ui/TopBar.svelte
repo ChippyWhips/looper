@@ -4,6 +4,7 @@
 	import { formatDuration } from '../time';
 	import Chevron from './icons/Chevron.svelte';
 	import TextButton from './components/TextButton.svelte';
+	import Recent from './Recent.svelte';
 
 	interface Props {
 		app: App;
@@ -15,18 +16,23 @@
 
 <header class="top">
 	<span class="name">{APP_NAME}</span>
-	{#if t.loaded || t.name}
-		<button
-			class="title"
-			onclick={() => (app.view.recentOpen = !app.view.recentOpen)}
-			aria-expanded={app.view.recentOpen}
-			aria-haspopup="menu"
-			data-testid="title"
-		>
-			<span class="track">{t.name}</span>
-			<span class="dur">{formatDuration(t.length, t.sampleRate)}</span>
-			<span class="chev"><Chevron /></span>
-		</button>
+	{#if t.loaded || t.name || app.recent.length}
+		<span class="anchor">
+			<button
+				class="title"
+				onclick={() => (app.view.recentOpen = !app.view.recentOpen)}
+				aria-expanded={app.view.recentOpen}
+				aria-haspopup="menu"
+				data-testid="title"
+			>
+				<span class="track">{t.name}</span>
+				<span class="dur">{formatDuration(t.length, t.sampleRate)}</span>
+				<span class="chev"><Chevron /></span>
+			</button>
+			{#if app.recent.length}
+				<Recent {app} open={app.view.recentOpen} />
+			{/if}
+		</span>
 	{/if}
 	<span class="actions">
 		<TextButton onclick={onopen} testid="open">Open</TextButton>
@@ -51,6 +57,13 @@
 		line-height: var(--lh-sm);
 		font-weight: var(--fw-medium);
 		color: var(--fg-muted);
+	}
+	.anchor {
+		position: relative;
+		display: flex;
+		align-items: center;
+		height: 100%;
+		min-width: 0;
 	}
 	.title {
 		display: inline-flex;

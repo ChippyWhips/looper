@@ -1,5 +1,11 @@
 import workletUrl from './player.worklet.ts?worker&url';
-import type { FromWorklet, SourcePayload, ToWorklet, TransportState } from './protocol';
+import {
+	POSITION_COMMANDS,
+	type FromWorklet,
+	type SourcePayload,
+	type ToWorklet,
+	type TransportState
+} from './protocol';
 import { sniffSampleRate } from './sniff';
 import type { SourceState } from './sources';
 
@@ -128,14 +134,19 @@ export class Engine {
 			}
 			this.active = g;
 			this.latencySent = -1;
+			this.sentEpoch = 0;
 			await g.ready;
 			this.onGraph?.();
 		}
 		return g.ready;
 	}
 
+	private sentEpoch = 0;
+
 	private send(msg: ToWorklet, transfer: Transferable[] = []): void {
-		this.node?.port.postMessage(msg, transfer);
+		if (!this.node) return;
+		if ((POSITION_COMMANDS as readonly string[]).includes(msg.type)) this.sentEpoch++;
+		this.node.port.postMessage(msg, transfer);
 	}
 
 	/** Resolves once the worklet has processed every earlier message. */
@@ -150,6 +161,8 @@ export class Engine {
 	private onMessage(msg: FromWorklet): void {
 		switch (msg.type) {
 			case 'pos': {
+				// A report that predates our latest seek/play/pause would move the playhead back.
+				if (msg.epoch < this.sentEpoch) break;
 				const prev = this.last.state;
 				this.last = msg;
 				if (prev !== msg.state) this.events.state?.(msg.state);

@@ -33,9 +33,27 @@
 
 	onMount(() => {
 		void app.engine.prewarm([48000, 44100]);
+		void app.restore();
+		const stopAutosave = app.startAutosave();
+		const hide = () => app.onPageHide();
+		const vis = () => document.hidden && app.flushSave();
+		addEventListener('pagehide', hide);
+		document.addEventListener('visibilitychange', vis);
+		const closeMenu = (e: PointerEvent) => {
+			if (!app.view.recentOpen) return;
+			const el = e.target as Element | null;
+			if (!el?.closest('[data-testid=recent], [data-testid=title]')) app.view.recentOpen = false;
+		};
+		addEventListener('pointerdown', closeMenu);
 		if (import.meta.env.DEV || location.search.includes('test')) {
 			(window as unknown as { looper: App }).looper = app;
 		}
+		return () => {
+			stopAutosave();
+			removeEventListener('pagehide', hide);
+			document.removeEventListener('visibilitychange', vis);
+			removeEventListener('pointerdown', closeMenu);
+		};
 	});
 </script>
 

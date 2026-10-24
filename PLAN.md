@@ -70,13 +70,13 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 6: Persistence
 
-- [ ] opfs.worker.ts (createSyncAccessHandle), hash.ts (SHA-256), track-store.ts
-- [ ] settings-schema.ts (version 1, migration hook, `stems` absent), reserved `stems/` dir
-- [ ] Recent list (3), eviction removes dir, content match, debounce 500 ms + pagehide
-- [ ] Restore most recent on launch, paused at last position
-- [ ] Recent dropdown UI (320 px, rows, ×)
-- [ ] E2E: open 4, reload, 3 remain with settings, evicted dir gone
-- [ ] Verify + commit `phase 6`
+- [x] opfs.worker.ts (createSyncAccessHandle), hash.ts (SHA-256), track-store.ts
+- [x] settings-schema.ts (version 1, migration hook, `stems` absent), reserved `stems/` dir
+- [x] Recent list (3), eviction removes dir, content match, debounce 500 ms + pagehide
+- [x] Restore most recent on launch, paused at last position
+- [x] Recent dropdown UI (320 px, rows, ×)
+- [x] E2E: open 4, reload, 3 remain with settings, evicted dir gone
+- [x] Verify + commit `phase 6`
 
 ## Phase 7: Polish
 
@@ -124,3 +124,10 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - Fixed: first pass was a flat bright red wash when playing (fields too large, tonemap too hot). Reduced field radii/weights and tonemap gain; dark areas now remain, as in refs 01/02.
 - Paused exposure 0.5 vs ~0.9 playing (≈ 40–55 % brightness after tonemap); paused render rate 9.5 fps, playing 60 fps; reduced motion 1 fps; WebGL2-less fallback draws a static 2D frame.
 - Grain is rendered at 0.5× resolution as specified, so it reads slightly coarse at 1×; acceptable.
+
+### Phase 6
+
+- Recent dropdown: 320 px `--bg-raised` panel, 1 px `--border-strong`, square, directly under the title; 32 px rows, name sans 13 (current primary, others muted), `5:00 · 6.9 MB` mono 11 subtle right-aligned, hover row `--bg-interactive-hover` with `×`. Fades on the Base tier, in and out.
+- Fixed: the panel's `open` state class collided with the row button's `.open` class and laid rows out horizontally.
+- Fixed (Firefox/WebKit): a position report generated before a seek could overwrite it; reports now carry an epoch and stale ones are dropped.
+- Fixed: a debounced save delayed past the next open was dropped; saves now flush before a new track starts loading.

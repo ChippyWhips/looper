@@ -13,6 +13,8 @@ import { LoopState } from './loop.svelte';
 import { TrackState } from './track.svelte';
 import { TransportState } from './transport.svelte';
 import { ViewState } from './view.svelte';
+import { TrackStore, type RecentEntry } from '../storage/track-store';
+import { defaultSettings, rescale, type Settings } from '../storage/settings-schema';
 
 const yieldTask = () => new Promise<void>((r) => setTimeout(r, 0));
 
@@ -23,8 +25,12 @@ export class App {
 	readonly loop = new LoopState();
 	readonly transport = new TransportState();
 	readonly view = new ViewState();
+	readonly store = new TrackStore();
+	recent = $state<RecentEntry[]>([]);
 	private peaksWorker: Worker | null = null;
 	private openSeq = 0;
+	private saveTimer: ReturnType<typeof setTimeout> | undefined;
+	private lastSaved = '';
 	/** ms from open() to playable, for performance tests. */
 	lastOpenMs = 0;
 
@@ -45,55 +51,164 @@ export class App {
 		return this.engine.position();
 	}
 
+	/** Open a file from disk (picker or drop). */
 	async open(file: File | Blob, name = (file as File).name ?? 'Untitled'): Promise<void> {
+		const meta = {
+			name: name.replace(/\.[^.]+$/, ''),
+			fileName: name,
+			type: file.type,
+			size: file.size
+		};
+		this.flushSave();
+		this.track.status = 'loading';
+		let bytes: ArrayBuffer;
+		try {
+			bytes = await file.arrayBuffer();
+		} catch {
+			this.fail();
+			return;
+		}
+		await this.openBytes(bytes, meta, null);
+	}
+
+	/** Reopen a track from the Recent list. */
+	async openRecent(entry: RecentEntry): Promise<void> {
+		this.view.recentOpen = false;
+		if (entry.id === this.track.id) return;
+		this.flushSave();
+		const bytes = await this.store.readOriginal(entry.id).catch(() => null);
+		if (!bytes) {
+			this.recent = await this.store.forget(entry.id).catch(() => this.recent);
+			this.fail();
+			return;
+		}
+		await this.openBytes(bytes, entry, entry.id);
+	}
+
+	/** Most recent track, paused at its last position. */
+	async restore(): Promise<void> {
+		if (!this.store.available) return;
+		try {
+			this.recent = await this.store.recent();
+		} catch {
+			return;
+		}
+		const first = this.recent[0];
+		if (first && this.track.status === 'empty') await this.openRecent(first);
+	}
+
+	private fail(message = 'Unsupported file'): void {
+		this.track.status = 'error';
+		this.track.error = message;
+	}
+
+	private async openBytes(
+		bytes: ArrayBuffer,
+		meta: { name: string; fileName: string; type: string; size: number },
+		knownId: string | null
+	): Promise<void> {
 		const seq = ++this.openSeq;
 		const t0 = performance.now();
 		const t = this.track;
+		this.flushSave();
 		if (this.transport.playing) this.engine.pause();
 		t.status = 'loading';
 		t.error = '';
+		const ingest: Promise<string | null> = knownId
+			? Promise.resolve(knownId)
+			: this.store.available
+				? this.store.ingest(bytes).then(
+						(r) => r.id,
+						() => null
+					)
+				: Promise.resolve(null);
 		let buffer: AudioBuffer;
 		try {
-			const bytes = await file.arrayBuffer();
 			buffer = await this.engine.decode(bytes);
 		} catch {
-			if (seq !== this.openSeq) return;
-			t.status = 'error';
-			t.error = 'Unsupported file';
+			if (seq === this.openSeq) this.fail();
 			return;
 		}
 		if (seq !== this.openSeq) return;
+		const id = await ingest;
+		const [settings, peaks, onsets, analysis] = id
+			? await Promise.all([
+					this.store.loadSettings(id).catch(() => null),
+					this.store.loadPeaks(id).catch(() => null),
+					this.store.loadOnsets(id).catch(() => null),
+					this.store.loadAnalysis(id).catch(() => null)
+				])
+			: [null, null, null, null];
+		if (seq !== this.openSeq) return;
 		await this.engine.load(buffer);
+		if (seq !== this.openSeq) return;
+
+		t.id = id;
 		t.buffer = buffer;
 		t.channels = Array.from({ length: Math.min(2, buffer.numberOfChannels) }, (_, c) =>
 			buffer.getChannelData(c)
 		);
-		t.file = file;
-		t.name = name.replace(/\.[^.]+$/, '');
-		t.size = file.size;
+		t.name = meta.name;
+		t.size = meta.size;
 		t.length = buffer.length;
 		t.sampleRate = buffer.sampleRate;
-		t.peaks = null;
+		t.peaks = peaks && peaks.length === buffer.length ? peaks : null;
 		t.mono = null;
-		t.onsets = null;
-		this.transport.tempoDetected = null;
-		this.transport.tempoOverride = null;
-		this.transport.countIn = false;
-		this.loop.start = 0;
-		this.loop.end = 0;
-		this.loop.on = false;
-		this.loop.selected = null;
-		this.engine.setLoop({ start: 0, end: 0, on: false });
-		this.engine.setParams(this.transport.speed / 100, this.transport.cents);
-		this.viewport.setLength(buffer.length);
+		t.onsets = onsets;
+		this.transport.tempoDetected = analysis?.tempo ?? null;
+		this.applySettings(
+			settings ? rescale(settings, buffer.sampleRate) : defaultSettings(buffer.sampleRate)
+		);
 		this.view.wave.follow = true;
 		t.status = 'ready';
 		t.analysisVersion++;
 		this.lastOpenMs = performance.now() - t0;
-		void this.analyse(seq);
+		this.lastSaved = JSON.stringify(this.snapshotCore());
+
+		if (id) {
+			const entry: RecentEntry = {
+				id,
+				name: meta.name,
+				fileName: meta.fileName,
+				type: meta.type,
+				length: buffer.length,
+				sampleRate: buffer.sampleRate,
+				size: meta.size,
+				openedAt: Date.now()
+			};
+			this.store.touch(entry).then(
+				(list) => seq === this.openSeq && (this.recent = list),
+				() => {}
+			);
+		}
+		void this.analyse(seq, !t.peaks, !t.onsets, analysis === null);
 	}
 
-	private async analyse(seq: number): Promise<void> {
+	private applySettings(s: Settings): void {
+		const len = this.track.length;
+		const start = Math.min(len, Math.max(0, s.loop.start));
+		const end = Math.min(len, Math.max(0, s.loop.end));
+		this.loop.start = end > start ? start : 0;
+		this.loop.end = end > start ? end : 0;
+		this.loop.on = end > start && s.loop.on;
+		this.loop.selected = null;
+		this.transport.speed = Math.round(Math.min(SPEED_MAX, Math.max(SPEED_MIN, s.speed)));
+		this.transport.cents = Math.round(Math.min(PITCH_MAX, Math.max(PITCH_MIN, s.cents)));
+		this.transport.countIn = s.countIn;
+		this.transport.tempoOverride = s.tempoOverride;
+		this.engine.setLoop({ start: this.loop.start, end: this.loop.end, on: this.loop.on });
+		this.engine.setParams(this.transport.speed / 100, this.transport.cents);
+		this.viewport.setLength(len);
+		if (s.view) this.viewport.restore(s.view.start, s.view.fpp);
+		this.engine.seek(Math.min(len, Math.max(0, s.position)));
+	}
+
+	private async analyse(
+		seq: number,
+		wantPeaks: boolean,
+		wantOnsets: boolean,
+		wantTempo: boolean
+	): Promise<void> {
 		const ch = this.track.channels;
 		if (!ch) return;
 		const copies: Float32Array[] = [];
@@ -105,6 +220,7 @@ export class App {
 		this.peaksWorker?.terminate();
 		const w = new PeaksWorker();
 		this.peaksWorker = w;
+		const id = this.track.id;
 		w.onmessage = (e: MessageEvent<PeaksResponse>) => {
 			if (seq !== this.openSeq) return;
 			const msg = e.data;
@@ -112,45 +228,153 @@ export class App {
 				const levels: PeakLevel[] = msg.levels;
 				this.track.peaks = { length: this.track.length, levels };
 				this.track.analysisVersion++;
+				if (msg.final && id) this.store.savePeaks(id, this.track.peaks).catch(() => {});
 			} else if (msg.type === 'mono') {
 				this.track.mono = msg.mono;
 				w.terminate();
-				this.onMono();
+				if (wantOnsets) this.detectOnsets(msg.mono, seq);
+				if (wantTempo) this.detectTempo(msg.mono, seq);
 			}
 		};
 		w.postMessage(
-			{ channels: copies, width: Math.max(1280, this.viewport.width) },
+			{ channels: copies, width: Math.max(1280, this.viewport.width), peaks: wantPeaks },
 			copies.map((c) => c.buffer)
 		);
 	}
 
-	/** Mono downmix ready: start onset detection (and tempo, phase 4). */
-	protected onMono(): void {
-		const mono = this.track.mono;
-		if (!mono) return;
-		const seq = this.openSeq;
+	private detectOnsets(mono: Float32Array, seq: number): void {
+		const id = this.track.id;
 		const w = new OnsetsWorker();
 		w.onmessage = (e: MessageEvent<OnsetsResponse>) => {
 			w.terminate();
 			if (seq !== this.openSeq) return;
 			this.track.onsets = e.data.onsets;
 			this.track.analysisVersion++;
+			if (id) this.store.saveOnsets(id, e.data.onsets).catch(() => {});
 		};
 		w.postMessage({ mono: mono.slice(), sampleRate: this.track.sampleRate });
-		this.onMonoExtra(mono, seq);
 	}
 
 	/** Tempo detection in a worker; a typed override always wins. */
-	protected onMonoExtra(mono: Float32Array, seq: number): void {
+	private detectTempo(mono: Float32Array, seq: number): void {
+		const id = this.track.id;
 		const w = new TempoWorker();
 		w.onmessage = (e: MessageEvent<TempoResponse>) => {
 			w.terminate();
 			if (seq !== this.openSeq) return;
 			if (e.data.error) console.warn('tempo:', e.data.error);
-			this.transport.tempoDetected = e.data.bpm === null ? null : Math.round(e.data.bpm * 10) / 10;
+			const bpm = e.data.bpm === null ? null : Math.round(e.data.bpm * 10) / 10;
+			this.transport.tempoDetected = bpm;
+			if (id && !e.data.error) this.store.saveAnalysis(id, { tempo: bpm }).catch(() => {});
 		};
 		const copy = mono.slice();
 		w.postMessage({ mono: copy, sampleRate: this.track.sampleRate }, [copy.buffer]);
+	}
+
+	/** Remove a track from Recent and storage; unloads it if it is open. */
+	async removeRecent(id: string): Promise<void> {
+		if (id === this.track.id) this.unload();
+		this.recent = await this.store.forget(id).catch(() => this.recent.filter((e) => e.id !== id));
+	}
+
+	unload(): void {
+		this.openSeq++;
+		if (this.transport.playing) this.engine.pause();
+		const t = this.track;
+		t.id = null;
+		t.name = '';
+		t.status = 'empty';
+		t.length = 0;
+		t.buffer = null;
+		t.channels = null;
+		t.peaks = null;
+		t.mono = null;
+		t.onsets = null;
+		this.loop.start = 0;
+		this.loop.end = 0;
+		this.loop.on = false;
+		this.transport.tempoDetected = null;
+		this.transport.tempoOverride = null;
+		this.viewport.setLength(0);
+		t.analysisVersion++;
+	}
+
+	// Persistence
+
+	private snapshotCore(): Omit<Settings, 'updatedAt'> {
+		const vp = this.viewport;
+		return {
+			version: 1,
+			sampleRate: this.track.sampleRate,
+			loop: { start: this.loop.start, end: this.loop.end, on: this.loop.on },
+			speed: this.transport.speed,
+			cents: this.transport.cents,
+			countIn: this.transport.countIn,
+			tempoOverride: this.transport.tempoOverride,
+			position: Math.round(this.position()),
+			view: vp.isFit ? null : { start: vp.start, fpp: vp.fpp }
+		};
+	}
+
+	private snapshot(): Settings {
+		return { ...this.snapshotCore(), updatedAt: Date.now() };
+	}
+
+	/** Debounced (500 ms) save if anything changed. */
+	scheduleSave(): void {
+		if (!this.track.loaded || !this.track.id) return;
+		clearTimeout(this.saveTimer);
+		this.saveTimer = setTimeout(() => this.flushSave(), 500);
+	}
+
+	/** Save now if the settings differ from the last save. */
+	flushSave(): void {
+		clearTimeout(this.saveTimer);
+		const id = this.track.id;
+		if (!this.track.loaded || !id) return;
+		const core = JSON.stringify(this.snapshotCore());
+		if (core === this.lastSaved) return;
+		this.lastSaved = core;
+		this.store.saveSettings(id, this.snapshot()).catch((e) => console.warn('save failed', e));
+	}
+
+	/** pagehide: stash synchronously, then attempt the OPFS write. */
+	onPageHide(): void {
+		const id = this.track.id;
+		if (!this.track.loaded || !id) return;
+		const s = this.snapshot();
+		this.store.stashSettings(id, s);
+		this.lastSaved = '';
+		this.flushSave();
+	}
+
+	/** Start reactive autosave; call once from a component. */
+	startAutosave(): () => void {
+		const stop = $effect.root(() => {
+			$effect(() => {
+				void [
+					this.track.id,
+					this.loop.start,
+					this.loop.end,
+					this.loop.on,
+					this.transport.speed,
+					this.transport.cents,
+					this.transport.countIn,
+					this.transport.tempoOverride,
+					this.transport.state
+				];
+				this.scheduleSave();
+			});
+		});
+		// Position and view are not reactive; poll them cheaply.
+		const timer = setInterval(() => {
+			if (this.track.loaded && JSON.stringify(this.snapshotCore()) !== this.lastSaved)
+				this.scheduleSave();
+		}, 1000);
+		return () => {
+			stop();
+			clearInterval(timer);
+		};
 	}
 
 	// Speed and pitch

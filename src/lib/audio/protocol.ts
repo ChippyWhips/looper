@@ -16,6 +16,9 @@ export type ToWorklet =
 	| { type: 'latency'; seconds: number }
 	| { type: 'ping'; id: number };
 
+/** Commands that change the position; reports older than the latest are ignored. */
+export const POSITION_COMMANDS = ['load', 'play', 'pause', 'seek'] as const;
+
 export type TransportState = 'stopped' | 'counting' | 'playing';
 
 export type FromWorklet =
@@ -29,6 +32,8 @@ export type FromWorklet =
 			/** Source frames per second of audio clock while the audible position advances; 0 when still. */
 			velocity: number;
 			state: TransportState;
+			/** Count of position-changing commands applied (load, play, pause, seek). */
+			epoch: number;
 	  }
 	| { type: 'beats'; times: number[] }
 	| { type: 'ended'; frame: number }

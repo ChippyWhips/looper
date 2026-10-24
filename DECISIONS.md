@@ -64,3 +64,15 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 - **Paused drift**: one primary cycle per 20 s; exposure 0.5.
 - **Reduced motion**: time is frozen and the frame re-renders once a second.
 - **Fallback**: without WebGL2 a static frame is drawn with 2D radial gradients from the same tokens.
+
+## Persistence
+
+- **Layout.** `looper/recent.json` and `looper/tracks/<sha256>/{original, peaks.bin, onsets.bin, analysis.json, settings.json, stems/}`. `stems/` is created empty on ingest; `settings.json` has no `stems` field until phase 8 writes one.
+- **Hashing happens in the OPFS worker** during ingest (the bytes are transferred there), in parallel with decoding on the main thread.
+- **Cached analysis.** Peaks, onsets and the detected tempo are stored and reused, so reopening a track skips the peaks, onset and tempo workers (the mono downmix for zero-crossing snaps is still computed).
+- **pagehide durability.** A worker write may not complete while the page unloads, so `pagehide` also stashes the settings synchronously in `localStorage` (`looper:pending:<id>`); the next load moves it into OPFS if it is newer. All OPFS writes still go through the worker. Settings also save on `visibilitychange → hidden`.
+- **Position and view** are not reactive, so a 1 s poll schedules a save when they differ from the last save; everything else triggers the 500 ms debounce reactively.
+- **Frames are stored with their sample rate** and rescaled if a track is ever reopened at a different rate.
+- **Removing the open track** from Recent unloads it (empty state).
+- **WebKit tests use a persistent context**: Playwright's ephemeral WebKit contexts have no OPFS (`UnknownError`); persistent ones work, so the persistence test runs in a persistent context there. Real Safari is not affected.
+- **Stale position reports.** Reports carry an epoch (count of load/play/pause/seek commands applied); the engine ignores reports older than the last such command it sent.

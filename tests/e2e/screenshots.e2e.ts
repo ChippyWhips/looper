@@ -62,6 +62,18 @@ const STATES: State[] = [
 		}
 	},
 	{
+		name: 'recent',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await loadFixture(page, 'click-120-44100.wav');
+			await loadFixture(page, 'sine-1k-44100.wav');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.getByTestId('title').click();
+			await page.getByRole('menuitem').nth(1).hover();
+			await page.waitForTimeout(700);
+		}
+	},
+	{
 		name: 'sample-zoom',
 		setup: async (page) => {
 			await page.goto('/?test');
