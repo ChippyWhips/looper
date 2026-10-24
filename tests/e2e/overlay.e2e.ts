@@ -41,3 +41,16 @@ test.describe('overlay, empty and error states', () => {
 		await expect(page.getByRole('dialog')).toBeHidden();
 	});
 });
+
+test('mouse clicks on controls do not leave them focused', async ({ page, browserName }) => {
+	test.skip(browserName !== 'chromium', 'Chromium');
+	await page.goto('/?test');
+	await loadFixture(page, 'sine-440-48000.wav');
+	await page.getByTestId('play').click();
+	await page.getByTestId('snap-toggle').click();
+	await page.getByTestId('knob').click();
+	expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+	// Space toggles exactly once (no extra activation of a focused button).
+	await page.keyboard.press(' ');
+	await expect.poll(() => page.evaluate(() => window.looper.transport.playing)).toBe(false);
+});

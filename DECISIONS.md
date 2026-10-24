@@ -85,3 +85,13 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 ## Open issues
 
 No problem needed the three-attempts escape hatch. Known limitations are listed in README.md ("Known issues"); none blocks the acceptance criteria.
+
+## Feedback round 1 (owner requests, overriding SPEC.md)
+
+- **Deck height 250 px** (was 176) and **module padding `--s5`** (was 16 px).
+- **Space with the loop on** starts playback from the loop start rather than resuming in place.
+- **Pitch knob steps in semitones.** Drag (10 px per semitone), scroll and arrows move along the 100-cent grid anchored at 0, matching the knob's ticks; an off-grid value (e.g. −25) goes to the nearest semitone in the direction of travel first. Shift gives 1-cent steps. The typed/scrubbed value beside the knob still moves in cents. The 6 px centre dead band is gone; the grid itself holds 0 for ±5 px.
+- **Visualiser reworked as a liquid mesh.** Seven moving colour points blended with normalised Gaussian weights cover the whole surface (no gaps between blobs), under a flowing fbm domain warp and fbm shading for depth. The palette adds `--viz-5` amber, `--viz-6` rose and `--viz-7` plum (new primitives `--amber-500`, `--rose-500`, `--plum-900`); still no blue. A random seed per launch shuffles the colour arrangement and starting phase.
+- **More reactive.** Band levels use adaptive gain (relative to each band's decaying peak, 30 dB window) so any track drives the visual; a kick pulse (fast minus slow low-band envelope) swells the fields and lifts exposure; exposure slew raised to 6/s. Measured: average luminance jumps ~75 → ~120 on each 120 BPM kick, decaying over ~300 ms.
+- **Visual click.** With Count-in on, the Count-in dot keeps flashing on every beat during playback, at the track tempo, phased from where playback started and re-phased at each loop wrap or seek. Driven by the audible position, so speed changes are followed.
+- **No focus from mouse clicks.** `mousedown` on buttons, sliders, knobs, values and menu items no longer moves focus, so later shortcut keys don't re-activate the clicked control or reveal its focus ring. Tab focus and `:focus-visible` rings are unchanged.

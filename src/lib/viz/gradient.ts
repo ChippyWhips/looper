@@ -1,4 +1,4 @@
-import { FRAGMENT, VERTEX } from './shaders/gradient.frag';
+import { COLOURS, FRAGMENT, VERTEX } from './shaders/gradient.frag';
 
 export type RGB = [number, number, number];
 
@@ -16,10 +16,8 @@ export function parseColor(s: string): RGB {
 
 export interface Palette {
 	base: RGB;
-	c1: RGB;
-	c2: RGB;
-	c3: RGB;
-	c4: RGB;
+	/** --viz-1 … --viz-7 */
+	colours: RGB[];
 }
 
 export function readPalette(el: Element): Palette {
@@ -27,21 +25,32 @@ export function readPalette(el: Element): Palette {
 	const v = (n: string) => parseColor(s.getPropertyValue(n));
 	return {
 		base: v('--bg-sunken'),
-		c1: v('--viz-1'),
-		c2: v('--viz-2'),
-		c3: v('--viz-3'),
-		c4: v('--viz-4')
+		colours: Array.from({ length: COLOURS }, (_, i) => v(`--viz-${i + 1}`))
 	};
+}
+
+/** Shuffle colours with a seeded PRNG so each launch starts from a different arrangement. */
+export function shufflePalette(p: Palette, seed: number): Palette {
+	let x = Math.floor(seed * 1e6) >>> 0 || 1;
+	const rnd = () => (x = (x * 1664525 + 1013904223) >>> 0) / 4294967296;
+	const c = [...p.colours];
+	for (let i = c.length - 1; i > 0; i--) {
+		const j = Math.floor(rnd() * (i + 1));
+		[c[i], c[j]] = [c[j], c[i]];
+	}
+	return { base: p.base, colours: c };
 }
 
 export interface FrameParams {
 	time: number;
+	seed: number;
 	warp: number;
 	low: number;
 	high: number;
+	pulse: number;
 	exposure: number;
 	grain: number;
-	seed: number;
+	frame: number;
 }
 
 /** WebGL2 renderer for the visualiser. */
@@ -74,21 +83,9 @@ export class GradientRenderer {
 		const loc = gl.getAttribLocation(prog, 'aPos');
 		gl.enableVertexAttribArray(loc);
 		gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-		for (const n of [
-			'uRes',
-			'uTime',
-			'uWarp',
-			'uLow',
-			'uHigh',
-			'uExposure',
-			'uGrain',
-			'uSeed',
-			'uBase',
-			'uC1',
-			'uC2',
-			'uC3',
-			'uC4'
-		]) {
+		const names = ['uRes', 'uTime', 'uSeed', 'uWarp', 'uLow', 'uHigh', 'uPulse'];
+		names.push('uExposure', 'uGrain', 'uFrame', 'uBase', 'uCol');
+		for (const n of names) {
 			this.u[n] = gl.getUniformLocation(prog, n);
 		}
 	}
@@ -111,10 +108,7 @@ export class GradientRenderer {
 		const gl = this.gl;
 		gl.useProgram(this.prog);
 		gl.uniform3fv(this.u.uBase, p.base);
-		gl.uniform3fv(this.u.uC1, p.c1);
-		gl.uniform3fv(this.u.uC2, p.c2);
-		gl.uniform3fv(this.u.uC3, p.c3);
-		gl.uniform3fv(this.u.uC4, p.c4);
+		gl.uniform3fv(this.u.uCol, new Float32Array(p.colours.flat()));
 	}
 
 	render(f: FrameParams): void {
@@ -123,12 +117,14 @@ export class GradientRenderer {
 		gl.viewport(0, 0, c.width, c.height);
 		gl.uniform2f(this.u.uRes, c.width, c.height);
 		gl.uniform1f(this.u.uTime, f.time);
+		gl.uniform1f(this.u.uSeed, f.seed);
 		gl.uniform1f(this.u.uWarp, f.warp);
 		gl.uniform1f(this.u.uLow, f.low);
 		gl.uniform1f(this.u.uHigh, f.high);
+		gl.uniform1f(this.u.uPulse, f.pulse);
 		gl.uniform1f(this.u.uExposure, f.exposure);
 		gl.uniform1f(this.u.uGrain, f.grain);
-		gl.uniform1f(this.u.uSeed, f.seed);
+		gl.uniform1f(this.u.uFrame, f.frame);
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
 	}
 }
@@ -153,8 +149,8 @@ export function drawStatic(canvas: HTMLCanvasElement, p: Palette): void {
 		ctx.fillStyle = g;
 		ctx.fillRect(0, 0, w, h);
 	};
-	blob(0.55, 0.25, 0.9, p.c1, 1);
-	blob(0.38, 0.68, 0.6, p.c2, 0.5);
-	blob(0.72, 0.58, 0.4, p.c3, 0.25);
-	blob(0.64, 0.76, 0.15, p.c4, 0.08);
+	p.colours.forEach((c, i) => {
+		const a = (i / p.colours.length) * Math.PI * 2;
+		blob(0.5 + 0.35 * Math.cos(a), 0.5 + 0.35 * Math.sin(a), 0.6, c, 0.45);
+	});
 }

@@ -550,12 +550,14 @@ export class App {
 	togglePlay(): void {
 		if (!this.track.loaded) return;
 		if (this.transport.playing) this.engine.pause();
-		else this.play(this.position());
+		else this.play(this.loop.on && this.loop.exists ? this.loop.start : this.position());
 	}
 
 	play(from: number): void {
 		if (!this.track.loaded) return;
 		this.view.wave.follow = true;
+		this.clickAnchor = Math.round(from);
+		this.lastClickPos = -1;
 		void this.engine.play(from, this.transport.countIn ? this.transport.tempo : null);
 	}
 
@@ -640,17 +642,40 @@ export class App {
 		this.view.wave.follow = false;
 	}
 
-	/** Count-in beat indicator: lit for 100 ms from each audible click. */
+	/** Source frame on which beat 1 of the visual click falls. */
+	private clickAnchor = 0;
+	private lastClickPos = -1;
+
+	/**
+	 * Count-in beat indicator: lit for 100 ms on each count-in click, then, while playing with
+	 * count-in on, on every beat at the track tempo measured from where playback started (or the
+	 * loop start after each wrap). Driven by the audible position, so it follows speed changes.
+	 */
 	private tickBeats(): void {
 		const ctx = this.engine.ctx;
-		if (!this.beats.length || !ctx) {
-			if (this.transport.beatLit) this.transport.beatLit = false;
-			return;
+		const tr = this.transport;
+		let lit = false;
+		if (ctx && this.beats.length) {
+			const now = ctx.currentTime;
+			lit = this.beats.some((t) => now >= t && now < t + 0.1);
+			if (now > this.beats[this.beats.length - 1] + 0.1) this.beats = [];
+		} else if (ctx && tr.state === 'playing' && tr.countIn && tr.tempo) {
+			const sr = this.track.sampleRate;
+			const pos = this.position();
+			const last = this.lastClickPos;
+			const l = this.loop;
+			const inLoop = l.on && l.exists && pos >= l.start && pos < l.end;
+			// A jump backwards is a loop wrap or seek; a big jump forwards is a seek.
+			if (last >= 0 && (pos < last || pos - last > sr * 0.5)) {
+				this.clickAnchor = inLoop && pos < last ? l.start : pos;
+			}
+			const beat = (60 / tr.tempo) * sr;
+			const phase = (((pos - this.clickAnchor) % beat) + beat) % beat;
+			lit = phase < 0.1 * sr * (tr.speed / 100);
+			this.lastClickPos = pos;
 		}
-		const now = ctx.currentTime;
-		const lit = this.beats.some((t) => now >= t && now < t + 0.1);
-		if (lit !== this.transport.beatLit) this.transport.beatLit = lit;
-		if (now > this.beats[this.beats.length - 1] + 0.1) this.beats = [];
+		if (tr.state !== 'playing') this.lastClickPos = -1;
+		if (lit !== tr.beatLit) tr.beatLit = lit;
 	}
 
 	/** Per-frame housekeeping: follow the playhead by paging. Returns the playhead. */

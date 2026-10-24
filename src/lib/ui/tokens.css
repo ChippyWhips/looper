@@ -19,6 +19,9 @@
 		--ember-900: #1c0503;
 		--ember-700: #8c120c;
 		--ember-200: #ff9e85;
+		--amber-500: #ff8a1f;
+		--rose-500: #ff3d7f;
+		--plum-900: #2a0820;
 	}
 
 	/* Semantic tokens: dark theme. A light theme remaps this block under :root[data-theme='light']. */
@@ -49,6 +52,9 @@
 		--viz-2: var(--ember-700);
 		--viz-3: var(--red-500);
 		--viz-4: var(--ember-200);
+		--viz-5: var(--amber-500);
+		--viz-6: var(--rose-500);
+		--viz-7: var(--plum-900);
 	}
 
 	/* Type, space, line, motion and layout tokens. */
@@ -87,7 +93,7 @@
 		--ruler-h: 20px;
 		--overview-h: 24px;
 		--lane-h: 40px;
-		--deck-h: 176px;
+		--deck-h: 250px;
 		--transport-w: 240px;
 		--loop-min-w: 320px;
 		--viz-w: 280px;

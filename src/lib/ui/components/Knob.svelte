@@ -5,7 +5,10 @@
 		max: number;
 		/** Value of the centre detent and double-click reset. */
 		centre?: number;
+		/** Coarse step: drag, scroll and arrows move along this grid. */
 		step?: number;
+		/** Shift step. */
+		fineStep?: number;
 		disabled?: boolean;
 		label: string;
 		onchange: (v: number) => void;
@@ -16,6 +19,7 @@
 		max,
 		centre = 0,
 		step = 1,
+		fineStep = 1,
 		disabled = false,
 		label,
 		onchange
@@ -23,8 +27,8 @@
 
 	const TICKS = 25;
 	const SWEEP = 270;
-	const PX_PER_STEP = 4;
-	const DETENT_PX = 6;
+	const PX_PER_STEP = 10;
+	const PX_PER_FINE = 4;
 	const SIZE = 56;
 	const GAP = 4;
 	const TICK = 4;
@@ -62,33 +66,37 @@
 		};
 	});
 
-	let drag: { y: number; base: number } | null = null;
+	let drag: { y: number; base: number; shift: boolean } | null = null;
 	let wheelAcc = 0;
 
-	/** Value for a drag of dy px (up positive), with a ±6 px dead band at the centre detent. */
-	function dragValue(dy: number, fine: number, alt: boolean): number {
-		const base = drag!.base;
-		const perPx = (step * fine) / PX_PER_STEP;
-		if (alt) return clamp(Math.round((base + dy * perPx) / step) * step);
-		const z = (centre - base) / perPx;
-		const rel = dy - z;
-		if (Math.abs(rel) <= DETENT_PX) return centre;
-		// Passing through the detent costs its dead band.
-		const crossed = Math.abs(z) <= DETENT_PX || Math.sign(rel) !== Math.sign(-z);
-		const p = crossed ? dy - Math.sign(rel) * DETENT_PX : dy;
-		return clamp(Math.round((base + p * perPx) / step) * step);
+	/**
+	 * Move n coarse steps from v along the step grid (anchored at centre). Off-grid values go to
+	 * the nearest grid point in the direction of travel first.
+	 */
+	function stepFrom(v: number, n: number): number {
+		if (n === 0) return v;
+		const g = (v - centre) / step;
+		const k = n > 0 ? Math.floor(g + 1e-9) + n : Math.ceil(g - 1e-9) + n;
+		return clamp(centre + k * step);
+	}
+
+	function move(e: PointerEvent) {
+		if (!drag) return;
+		// Re-anchor when Shift changes so switching resolution mid-drag never jumps.
+		if (e.shiftKey !== drag.shift) drag = { y: e.clientY, base: value, shift: e.shiftKey };
+		const dy = drag.y - e.clientY;
+		const v = e.shiftKey
+			? clamp(
+					Math.round((drag.base + Math.trunc(dy / PX_PER_FINE) * fineStep) / fineStep) * fineStep
+				)
+			: stepFrom(drag.base, Math.trunc(dy / PX_PER_STEP));
+		if (v !== value) onchange(v);
 	}
 
 	function down(e: PointerEvent) {
 		if (disabled || e.button !== 0) return;
 		(e.currentTarget as Element).setPointerCapture(e.pointerId);
-		drag = { y: e.clientY, base: value };
-	}
-
-	function move(e: PointerEvent) {
-		if (!drag) return;
-		const v = dragValue(drag.y - e.clientY, e.shiftKey ? 10 : 1, e.altKey);
-		if (v !== value) onchange(v);
+		drag = { y: e.clientY, base: value, shift: e.shiftKey };
 	}
 
 	function wheel(e: WheelEvent) {
@@ -98,7 +106,7 @@
 		const n = Math.trunc(wheelAcc / 16);
 		if (!n) return;
 		wheelAcc -= n * 16;
-		onchange(clamp(value - n * step * (e.shiftKey ? 10 : 1)));
+		onchange(e.shiftKey ? clamp(value - n * fineStep) : stepFrom(value, -n));
 	}
 
 	function key(e: KeyboardEvent) {
@@ -108,7 +116,8 @@
 		if (!up && !dn) return;
 		e.preventDefault();
 		e.stopPropagation();
-		onchange(clamp(value + (up ? 1 : -1) * step * (e.shiftKey ? 10 : 1)));
+		const d = up ? 1 : -1;
+		onchange(e.shiftKey ? clamp(value + d * fineStep) : stepFrom(value, d));
 	}
 </script>
 

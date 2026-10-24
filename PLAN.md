@@ -147,3 +147,8 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - Error: one line, primary text with a 6 px accent dot. Drop: thin white outline round the waveform area and the single word `Drop`.
 - Added: deck values and the position readout fade in on the Slow tier on first load; later changes are instant.
 - Fixed: the drop screenshot state ran before the app mounted.
+
+### Feedback round 1
+
+- Deck 250 px with 24 px module padding: rows breathe; pitch quick values still fit at 1280 px.
+- Visualiser: reads as a moving liquid surface in ember, amber, rose and plum; pulses on the kick.

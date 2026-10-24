@@ -27,6 +27,8 @@
 			value={cents}
 			min={PITCH_MIN}
 			max={PITCH_MAX}
+			step={100}
+			fineStep={1}
 			disabled={!loaded}
 			label="Pitch"
 			onchange={(v) => app.setPitch(v)}

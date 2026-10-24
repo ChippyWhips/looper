@@ -138,4 +138,17 @@ test.describe('loop editing', () => {
 		expect(Math.abs(l.end - 200000)).toBeLessThanOrEqual(96);
 		expect(l.on).toBe(true);
 	});
+
+	test('Space starts from the loop start when the loop is on', async ({ page }) => {
+		await page.evaluate(() => {
+			window.looper.setLoopRange(96000, 192000, true);
+			window.looper.seek(300000);
+		});
+		await page.keyboard.press(' ');
+		await page.waitForTimeout(500);
+		const pos = await page.evaluate(() => window.looper.position());
+		expect(pos).toBeGreaterThanOrEqual(96000);
+		expect(pos).toBeLessThan(192000);
+		await page.keyboard.press(' ');
+	});
 });

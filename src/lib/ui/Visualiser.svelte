@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { App } from '../state/app.svelte';
 	import { FeatureTracker } from '../viz/features';
-	import { drawStatic, GradientRenderer, readPalette } from '../viz/gradient';
+	import { drawStatic, GradientRenderer, readPalette, shufflePalette } from '../viz/gradient';
 
 	interface Props {
 		app: App;
@@ -12,17 +12,19 @@
 
 	const SCALE = 0.5;
 	const PAUSED_RATE = (2 * Math.PI) / (20 * 1.0);
-	const MAX_EXPOSURE_SLEW = 1.5;
+	const MAX_EXPOSURE_SLEW = 6;
 
 	onMount(() => {
-		const palette = readPalette(canvas);
+		// A fresh arrangement and phase every launch.
+		const seed = Math.random();
+		const palette = shufflePalette(readPalette(canvas), seed);
 		const gl = GradientRenderer.create(canvas);
 		const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 		const tracker = new FeatureTracker();
 		let raf = 0;
 		let last = 0;
 		let lastDraw = -Infinity;
-		let time = 0;
+		let time = seed * 1000;
 		let exposure = 0.5;
 
 		const size = () => {
@@ -50,19 +52,21 @@
 			last = now;
 			lastDraw = now;
 			const f = tracker.update(app.engine.analyser, app.engine.sampleRate, dt, playing);
-			const rate = PAUSED_RATE * (playing ? 1 + 2.5 * f.mid : 1);
+			const rate = PAUSED_RATE * (playing ? 1.5 + 3 * f.mid + 2 * f.pulse : 1);
 			if (!reduce.matches) time += (dt / 1000) * rate;
-			const target = playing ? 0.45 + 0.5 * f.rms : 0.5;
+			const target = playing ? 0.55 + 0.45 * f.rms : 0.5;
 			const maxStep = (MAX_EXPOSURE_SLEW * dt) / 1000;
 			exposure += Math.max(-maxStep, Math.min(maxStep, target - exposure));
 			gl.render({
 				time,
+				seed: seed * 100,
 				warp: playing ? f.mid : 0,
 				low: f.low,
 				high: f.high,
+				pulse: playing && !reduce.matches ? f.pulse : 0,
 				exposure,
 				grain: 0.04 + 0.04 * f.high,
-				seed: reduce.matches ? 0 : (now % 1000) * 0.37
+				frame: reduce.matches ? 0 : (now % 1000) * 0.37
 			});
 			(window as unknown as { __vizFrames: number }).__vizFrames++;
 		};

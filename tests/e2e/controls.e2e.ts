@@ -50,28 +50,30 @@ test.describe('speed, pitch, tempo, count-in', () => {
 		const knob = page.getByTestId('knob');
 		await knob.focus();
 		await page.keyboard.press('ArrowDown');
-		expect(await cents(page)).toBe(-1);
+		expect(await cents(page)).toBe(-100);
 		await page.keyboard.press('Shift+ArrowDown');
-		expect(await cents(page)).toBe(-11);
+		expect(await cents(page)).toBe(-101);
+		// Off-grid: the next semitone step lands back on the grid.
+		await page.keyboard.press('ArrowUp');
+		expect(await cents(page)).toBe(-100);
 		await knob.dblclick();
 		expect(await cents(page)).toBe(0);
-		await page.getByRole('button', { name: '−100' }).click();
-		expect(await cents(page)).toBe(-100);
-		await expect(page.getByTestId('pitch-value')).toHaveText('−100 ct');
+		await page.getByRole('button', { name: '\u221225' }).click();
+		expect(await cents(page)).toBe(-25);
 		await page.getByTestId('pitch-value').click();
-		await page.getByLabel('Pitch cents').fill('−250');
+		await page.getByLabel('Pitch cents').fill('\u2212250');
 		await page.getByLabel('Pitch cents').press('Enter');
 		expect(await cents(page)).toBe(-250);
-		// Drag up from 0 holds at the centre detent for 6 px.
+		// Dragging moves one semitone per 10 px.
 		await knob.dblclick();
 		const b = (await knob.boundingBox())!;
 		await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
 		await page.mouse.down();
 		await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 - 5);
 		expect(await cents(page)).toBe(0);
-		await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 - 6 - 40);
+		await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 - 31);
 		await page.mouse.up();
-		expect(await cents(page)).toBe(10);
+		expect(await cents(page)).toBe(300);
 		// Speed is unaffected by pitch.
 		expect(await speed(page)).toBe(100);
 	});
@@ -91,6 +93,23 @@ test.describe('speed, pitch, tempo, count-in', () => {
 		await expect
 			.poll(() => page.evaluate(() => window.looper.transport.state), { timeout: 4000 })
 			.toBe('playing');
+		// The dot keeps flashing on the beat during playback (a visual click).
+		const samples = await page.evaluate(
+			() =>
+				new Promise<boolean[]>((resolve) => {
+					const out: boolean[] = [];
+					const id = setInterval(() => {
+						out.push(window.looper.transport.beatLit);
+						if (out.length >= 60) {
+							clearInterval(id);
+							resolve(out);
+						}
+					}, 25);
+				})
+		);
+		const onsets = samples.filter((v, i) => v && !samples[i - 1]).length;
+		expect(onsets).toBeGreaterThanOrEqual(2);
+		expect(onsets).toBeLessThanOrEqual(4);
 		await page.keyboard.press(' ');
 		// Typed tempo overrides detection.
 		await page.getByTestId('tempo').click();

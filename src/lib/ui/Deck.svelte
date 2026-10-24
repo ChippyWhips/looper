@@ -34,7 +34,7 @@
 		& :global(.module) {
 			display: grid;
 			grid-template-rows: auto 1fr auto;
-			padding: var(--s4);
+			padding: var(--s5);
 			min-width: 0;
 		}
 		& :global(.module > .mid) {

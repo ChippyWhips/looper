@@ -50,7 +50,11 @@ export class Envelope {
 	}
 }
 
-/** Smoothed band features from an AnalyserNode-like source. */
+/**
+ * Band features with adaptive gain: each band is measured in dB relative to its own recent
+ * peak, so quiet and loud tracks move the visual equally. `pulse` is the low band's fast
+ * envelope above its slow one, i.e. the kick.
+ */
 export class FeatureTracker {
 	private env = {
 		low: new Envelope(),
@@ -58,16 +62,26 @@ export class FeatureTracker {
 		high: new Envelope(),
 		rms: new Envelope()
 	};
+	private kickFast = new Envelope(8, 120);
+	private kickSlow = new Envelope(250, 500);
+	private peak = { low: -60, mid: -60, high: -60, rms: -40 };
 	private freq: Float32Array<ArrayBuffer> | null = null;
 	private time: Float32Array<ArrayBuffer> | null = null;
-	readonly out: Features = { low: 0, mid: 0, high: 0, rms: 0 };
+	readonly out: Features & { pulse: number } = { low: 0, mid: 0, high: 0, rms: 0, pulse: 0 };
+
+	/** dB value mapped to 0..1 over the 30 dB below the band's decaying peak. */
+	private agc(key: keyof FeatureTracker['peak'], db: number, dtMs: number): number {
+		const p = Math.max(db, this.peak[key] - (dtMs / 1000) * 3);
+		this.peak[key] = Math.max(p, -70);
+		return Math.min(1, Math.max(0, (db - (this.peak[key] - 30)) / 30));
+	}
 
 	update(
 		analyser: AnalyserNode | null,
 		sampleRate: number,
 		dtMs: number,
 		active: boolean
-	): Features {
+	): typeof this.out {
 		let low = 0;
 		let mid = 0;
 		let high = 0;
@@ -79,15 +93,19 @@ export class FeatureTracker {
 			}
 			analyser.getFloatFrequencyData(this.freq);
 			analyser.getFloatTimeDomainData(this.time!);
-			low = level(bandPower(this.freq, sampleRate, ...BANDS.low), -70, -20);
-			mid = level(bandPower(this.freq, sampleRate, ...BANDS.mid), -80, -30);
-			high = level(bandPower(this.freq, sampleRate, ...BANDS.high), -90, -40);
-			r = level(rms(this.time!) ** 2, -40, -6);
+			const db = (pw: number) => 10 * Math.log10(pw + 1e-12);
+			low = this.agc('low', db(bandPower(this.freq, sampleRate, ...BANDS.low)), dtMs);
+			mid = this.agc('mid', db(bandPower(this.freq, sampleRate, ...BANDS.mid)), dtMs);
+			high = this.agc('high', db(bandPower(this.freq, sampleRate, ...BANDS.high)), dtMs);
+			r = this.agc('rms', db(rms(this.time!) ** 2), dtMs);
 		}
 		this.out.low = this.env.low.step(low, dtMs);
 		this.out.mid = this.env.mid.step(mid, dtMs);
 		this.out.high = this.env.high.step(high, dtMs);
 		this.out.rms = this.env.rms.step(r, dtMs);
+		const fast = this.kickFast.step(low, dtMs);
+		const slow = this.kickSlow.step(low, dtMs);
+		this.out.pulse = Math.min(1, Math.max(0, (fast - slow) * 3));
 		return this.out;
 	}
 }

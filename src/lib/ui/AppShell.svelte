@@ -28,6 +28,16 @@
 		if (handleKey(app, e, openPicker)) e.preventDefault();
 	}
 
+	/**
+	 * Mouse clicks on controls do not take focus, so a later shortcut key neither activates the
+	 * clicked control again nor reveals its focus ring. Keyboard (Tab) focus is unaffected.
+	 */
+	function onmousedown(e: MouseEvent) {
+		const el = e.target as Element | null;
+		if (el?.closest('button, [role=slider], [role=spinbutton], [role=menuitem]'))
+			e.preventDefault();
+	}
+
 	function hasFiles(e: DragEvent) {
 		return e.dataTransfer?.types.includes('Files') ?? false;
 	}
@@ -60,6 +70,7 @@
 
 <svelte:window
 	{onkeydown}
+	{onmousedown}
 	ondragenter={(e) => {
 		if (!hasFiles(e)) return;
 		e.preventDefault();

@@ -57,7 +57,7 @@
 		<TextToggle
 			label="Count-in"
 			on={tr.countIn}
-			counting={tr.state === 'counting'}
+			counting={tr.countIn && tr.playing}
 			flash={tr.beatLit}
 			disabled={!t.loaded || tr.tempo === null}
 			onclick={() => app.toggleCountIn()}

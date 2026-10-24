@@ -31,7 +31,10 @@ const PRIMITIVES = [
 	'red-500',
 	'ember-900',
 	'ember-700',
-	'ember-200'
+	'ember-200',
+	'amber-500',
+	'rose-500',
+	'plum-900'
 ];
 
 const SEMANTIC = [
@@ -58,7 +61,10 @@ const SEMANTIC = [
 	'viz-1',
 	'viz-2',
 	'viz-3',
-	'viz-4'
+	'viz-4',
+	'viz-5',
+	'viz-6',
+	'viz-7'
 ];
 
 /** Style text of a component file: <style> blocks and style attributes for .svelte, all of .css. */
@@ -92,7 +98,7 @@ describe('design tokens', () => {
 	it('semantic tokens only point at primitives', () => {
 		for (const t of SEMANTIC) {
 			const m = tokens.match(new RegExp(`--${t}:\\s*([^;]+);`));
-			expect(m?.[1]).toMatch(/^var\(--(neutral|red|ember)-[\w-]+\)$/);
+			expect(m?.[1]).toMatch(/^var\(--(neutral|red|ember|amber|rose|plum)-[\w-]+\)$/);
 		}
 	});
 
@@ -101,7 +107,8 @@ describe('design tokens', () => {
 		for (const f of components) {
 			const css = styleText(f, readFileSync(f, 'utf8'));
 			const rel = relative(ROOT, f);
-			if (/--(neutral|red|ember)-\d/.test(css)) offences.push(`${rel}: primitive token`);
+			if (/--(neutral|red|ember|amber|rose|plum)-\d/.test(css))
+				offences.push(`${rel}: primitive token`);
 			if (/#[0-9a-fA-F]{3,8}\b/.test(css)) offences.push(`${rel}: hex colour`);
 			if (/\b(rgba?|hsla?|oklch|oklab|lab|lch|color)\(/.test(css))
 				offences.push(`${rel}: colour function`);
@@ -113,7 +120,8 @@ describe('design tokens', () => {
 			const rel = relative(ROOT, f);
 			if (/['"`]#[0-9a-fA-F]{3,8}['"`]/.test(text)) offences.push(`${rel}: hex colour in script`);
 			if (/['"`]rgba?\(/.test(text)) offences.push(`${rel}: rgb() in script`);
-			if (/--(neutral|red|ember)-\d/.test(text)) offences.push(`${rel}: primitive token in script`);
+			if (/--(neutral|red|ember|amber|rose|plum)-\d/.test(text))
+				offences.push(`${rel}: primitive token in script`);
 		}
 		expect(offences).toEqual([]);
 	});
