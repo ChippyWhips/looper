@@ -59,36 +59,39 @@ They land in `screenshots/phase-7/` at 1280×800 and 1512×982.
 
 ## Feature checklist
 
-| Area          | Item                                                                                                        | Status                                                              |
-| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Opening       | Drag-and-drop with `Drop` outline, Open / ⌘O, empty-state line, one-line error                              | Done                                                                |
-| Opening       | Playable immediately after decode; peaks/onsets in background                                               | Done (5-min MP3: ~0.4 s to playable, no main-thread task > 50 ms)   |
-| Waveform      | True min/max, 1 px lines, DPR-aware, polyline < 1 frame/px, dots > 6 px/sample                              | Done                                                                |
-| Waveform      | Zoom (⌘+scroll, pinch, = - 0 Z), pan (scroll, swipe, overview drag), ruler, overview                        | Done (Safari pinch via `gesturechange`, not automated)              |
-| Waveform      | Follow playhead by paging; manual pan disables until play or F                                              | Done                                                                |
-| Waveform      | Peaks equal brute force at every level; 60 fps zoom on 5-min track                                          | Done                                                                |
-| Loop          | Drag create / move / resize, 8 px hit zone, click outside seeks                                             | Done                                                                |
-| Loop          | Onset (8 px) then zero-crossing (±2 ms) snapping, Alt bypass                                                | Done                                                                |
-| Loop          | `[` `]` select, ←/→ nudge 1 ms / Shift 10 ms / Alt 1 sample                                                 | Done                                                                |
-| Loop          | Typed In / Out / Length, Enter / Esc / Alt+Enter                                                            | Done                                                                |
-| Loop          | L toggle keeps region; no jump when outside; Enter jumps to start                                           | Done                                                                |
-| Loop          | Live edits, wrap at next cycle or immediately if end moved behind                                           | Done                                                                |
-| Loop          | Wrap ±1 frame at 1.0; cycle = len/rate ±1 ms at 0.5/0.75; no clicks; round trips; zero-crossing tests       | Done (Node and real worklet in OfflineAudioContext)                 |
-| Speed         | Stepped slider 25–150 %, detents, 6 px snap, Alt bypass, typeable/scrubbable value, , . keys                | Done (detents evenly spaced, see DECISIONS)                         |
-| Speed         | 1 kHz at 50 % = 1 kHz ±1 ct                                                                                 | Done (−0.002 ct)                                                    |
-| Pitch         | Bipolar knob, centre detent, drag/scroll/keys, double-click reset, typeable value, quick values with E♭ / D | Done                                                                |
-| Pitch         | 440 Hz at −100 ct = 415.3 Hz ±1 ct at 100 % and 50 %                                                        | Done                                                                |
-| Count-in      | Toggle / C, one bar at tempo × speed, worklet-scheduled, beat indicator, per-track                          | Done                                                                |
-| Count-in      | Tempo detection (essentia.js, folded 70–180), typeable/scrubbable override, `—` until known                 | Done                                                                |
-| Count-in      | 120 BPM fixture → 120.0 ±0.5; click spacing and first audio frame ±1 ms at 1.0 and 0.5                      | Done                                                                |
-| Count-in      | `web-audio-beat-detector` fallback                                                                          | Not needed (essentia verified in all three browsers); not installed |
-| Visualiser    | WebGL2 mesh gradient, analyser after stretcher, band features with 40/300 ms smoothing                      | Done                                                                |
-| Visualiser    | 0.5× resolution, 60 fps cap, stops when hidden, ~10 fps paused, reduced motion, no-WebGL2 fallback          | Done                                                                |
-| Persistence   | OPFS worker with `createSyncAccessHandle`, SHA-256 ids, peaks/onsets/settings cached                        | Done                                                                |
-| Persistence   | Recent list of 3 with eviction, content recognition, 500 ms debounce + pagehide, restore on launch          | Done                                                                |
-| Shortcuts     | Every listed shortcut; suspended in text fields; `?` overlay                                                | Done                                                                |
-| Visual design | Tokens (two tiers), lint rule for primitives/raw colours, layout, type, controls, motion tiers              | Done                                                                |
-| Separation    | Seams only (mixer, types, lanes model, storage layout), tested                                              | Done (by design, no separation code)                                |
+| Area          | Item                                                                                                            | Status                                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Opening       | Drag-and-drop with `Drop` outline, Open / ⌘O, empty-state line, one-line error                                  | Done                                                                                                   |
+| Opening       | Playable immediately after decode; peaks/onsets in background                                                   | Done (5-min MP3: ~0.4 s to playable, no main-thread task > 50 ms)                                      |
+| Waveform      | True min/max, 1 px lines, DPR-aware, polyline < 1 frame/px, dots > 6 px/sample                                  | Done                                                                                                   |
+| Waveform      | Zoom (⌘+scroll, pinch, = - 0 Z), pan (scroll, swipe, overview drag), ruler, overview                            | Done (Safari pinch via `gesturechange`, not automated)                                                 |
+| Waveform      | Follow playhead by paging; manual pan disables until play or F                                                  | Done                                                                                                   |
+| Waveform      | Peaks equal brute force at every level; 60 fps zoom on 5-min track                                              | Done                                                                                                   |
+| Loop          | Drag create / move / resize, 8 px hit zone, click outside seeks                                                 | Done                                                                                                   |
+| Loop          | Onset (8 px) then zero-crossing (±2 ms) snapping, Alt bypass                                                    | Done                                                                                                   |
+| Loop          | `[` `]` select, ←/→ nudge 1 ms / Shift 10 ms / Alt 1 sample                                                     | Done                                                                                                   |
+| Loop          | Typed In / Out / Length, Enter / Esc / Alt+Enter                                                                | Done                                                                                                   |
+| Loop          | L toggle keeps region; no jump when outside; Enter jumps to start                                               | Done                                                                                                   |
+| Loop          | Live edits, wrap at next cycle or immediately if end moved behind                                               | Done                                                                                                   |
+| Loop          | Wrap ±1 frame at 1.0; cycle = len/rate ±1 ms at 0.5/0.75; no clicks; round trips; zero-crossing tests           | Done (Node and real worklet in OfflineAudioContext)                                                    |
+| Speed         | Stepped slider 25–150 %, detents, 6 px snap, Alt bypass, typeable/scrubbable value, , . keys                    | Done (detents evenly spaced, see DECISIONS)                                                            |
+| Speed         | 1 kHz at 50 % = 1 kHz ±1 ct                                                                                     | Done (−0.002 ct)                                                                                       |
+| Pitch         | Bipolar knob, centre detent, drag/scroll/keys, double-click reset, typeable value, quick values with E♭ / D     | Done                                                                                                   |
+| Pitch         | 440 Hz at −100 ct = 415.3 Hz ±1 ct at 100 % and 50 %                                                            | Done                                                                                                   |
+| Count-in      | Toggle / C, one bar at tempo × speed, worklet-scheduled, beat indicator, per-track                              | Done                                                                                                   |
+| Count-in      | Tempo detection (essentia.js, folded 70–180), typeable/scrubbable override, `—` until known                     | Done                                                                                                   |
+| Count-in      | 120 BPM fixture → 120.0 ±0.5; click spacing and first audio frame ±1 ms at 1.0 and 0.5                          | Done                                                                                                   |
+| Count-in      | `web-audio-beat-detector` fallback                                                                              | Not needed (essentia verified in all three browsers); not installed                                    |
+| Visualiser    | WebGL2 mesh gradient, analyser after stretcher, band features with 40/300 ms smoothing                          | Done                                                                                                   |
+| Visualiser    | 0.5× resolution, 60 fps cap, stops when hidden, ~10 fps paused, reduced motion, no-WebGL2 fallback              | Done                                                                                                   |
+| Persistence   | OPFS worker with `createSyncAccessHandle`, SHA-256 ids, peaks/onsets/settings cached                            | Done                                                                                                   |
+| Persistence   | Recent list of 3 with eviction, content recognition, 500 ms debounce + pagehide, restore on launch              | Done                                                                                                   |
+| Shortcuts     | Every listed shortcut; suspended in text fields; `?` overlay                                                    | Done                                                                                                   |
+| Visual design | Tokens (two tiers), lint rule for primitives/raw colours, layout, type, controls, motion tiers                  | Done                                                                                                   |
+| Separation    | Background separation in the browser (demucs-rs on WebGPU), progress + Stop, cancel on track change             | Partial: works in Chromium; UI stalls ~1 min at start; WebKit runtime crashes, so it shows unavailable |
+| Separation    | Lanes with mute/solo (DAW rules), mix when nothing muted/soloed, crossfaded switching, near-silent stems hidden | Done                                                                                                   |
+| Separation    | Re-separate (fine), stems stored and evicted with their track, restore on reopen                                | Done                                                                                                   |
+| Separation    | CPU fallback                                                                                                    | Not possible with demucs-rs's web build (WebGPU only): shows `Stems unavailable in this browser`       |
 
 ## Stem separation runtime
 
