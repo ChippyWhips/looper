@@ -50,25 +50,29 @@ export class WaveformInput {
 		this.app.viewport.zoomAt(f, x);
 	}
 
-	/** Which part of the loop is under x: an edge (±4 px), inside the band, or outside. */
-	private hit(x: number): 'in' | 'out' | 'inside' | 'outside' {
-		const l = this.app.loop;
-		if (!l.exists) return 'outside';
-		const vp = this.app.viewport;
-		const xi = vp.xAt(l.start);
-		const xo = vp.xAt(l.end);
-		const di = Math.abs(x - xi);
-		const dout = Math.abs(x - xo);
-		if (Math.min(di, dout) <= HIT / 2) return di <= dout ? 'in' : 'out';
-		if (x > xi && x < xo) return 'inside';
-		return 'outside';
+	/**
+	 * What a press at x does. With a loop region set, only its edges edit it; anywhere else
+	 * scrubs the playhead (Shift-drag draws a new region). Without one, dragging draws a region
+	 * unless the press is on the playhead.
+	 */
+	private hit(x: number, shift: boolean): 'in' | 'out' | 'scrub' | 'create' {
+		const app = this.app;
+		const vp = app.viewport;
+		const l = app.loop;
+		if (l.exists) {
+			const di = Math.abs(x - vp.xAt(l.start));
+			const dout = Math.abs(x - vp.xAt(l.end));
+			if (Math.min(di, dout) <= HIT / 2) return di <= dout ? 'in' : 'out';
+			return shift ? 'create' : 'scrub';
+		}
+		if (Math.abs(x - vp.xAt(app.position())) <= HIT / 2) return 'scrub';
+		return 'create';
 	}
 
 	private drag: {
-		kind: 'in' | 'out' | 'inside' | 'outside';
+		kind: 'in' | 'out' | 'scrub' | 'create';
 		x: number;
 		frame: number;
-		origStart: number;
 		moved: boolean;
 	} | null = null;
 
@@ -76,39 +80,36 @@ export class WaveformInput {
 		if (!this.app.track.loaded || e.button !== 0) return;
 		el.setPointerCapture(e.pointerId);
 		const x = this.localX(e, el);
-		const kind = this.hit(x);
-		this.drag = {
-			kind,
-			x,
-			frame: this.app.viewport.frameAt(x),
-			origStart: this.app.loop.start,
-			moved: false
-		};
+		const kind = this.hit(x, e.shiftKey);
+		this.drag = { kind, x, frame: this.app.viewport.frameAt(x), moved: false };
 		if (kind === 'in' || kind === 'out') this.app.loop.selected = kind;
 	}
 
 	mainMove(e: PointerEvent, el: HTMLElement): void {
 		const x = this.localX(e, el);
 		const d = this.drag;
+		const app = this.app;
 		if (!d) {
-			const h = this.app.track.loaded ? this.hit(x) : 'outside';
-			this.cursor = h === 'in' || h === 'out' ? 'col-resize' : h === 'inside' ? 'grab' : 'default';
+			const h = app.track.loaded ? this.hit(x, e.shiftKey) : 'create';
+			const onPlayhead =
+				app.track.loaded && Math.abs(x - app.viewport.xAt(app.position())) <= HIT / 2;
+			this.cursor = h === 'in' || h === 'out' ? 'col-resize' : onPlayhead ? 'ew-resize' : 'default';
 			return;
 		}
 		if (!d.moved && Math.abs(x - d.x) < DRAG_PX) return;
 		d.moved = true;
-		const app = this.app;
 		const f = app.viewport.frameAt(x);
 		switch (d.kind) {
 			case 'in':
 			case 'out':
 				app.setEdge(d.kind, app.snap(f, e.altKey));
 				break;
-			case 'inside':
-				this.cursor = 'grabbing';
-				app.moveLoop(app.snap(d.origStart + (f - d.frame), e.altKey));
+			case 'scrub':
+				this.cursor = 'ew-resize';
+				app.loop.selected = null;
+				app.seek(f);
 				break;
-			case 'outside':
+			case 'create':
 				app.loop.selected = null;
 				app.setLoopRange(app.snap(d.frame, e.altKey), app.snap(f, e.altKey), true);
 				break;
@@ -119,7 +120,7 @@ export class WaveformInput {
 		const d = this.drag;
 		this.drag = null;
 		if (!d) return;
-		if (!d.moved && (d.kind === 'outside' || d.kind === 'inside')) {
+		if (!d.moved && (d.kind === 'scrub' || d.kind === 'create')) {
 			this.app.loop.selected = null;
 			this.app.seek(d.frame);
 		}

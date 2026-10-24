@@ -61,16 +61,30 @@ test.describe('loop editing', () => {
 		expect(l.end).toBeGreaterThan(96000);
 		expect(l.selected).toBe('out');
 
-		// Move the whole loop keeping its length.
+		// Dragging inside the region scrubs the playhead and never moves the loop.
 		const len = l.end - l.start;
 		const mid = await xOf((l.start + l.end) / 2);
 		await page.mouse.move(box.x + mid, y);
 		await page.mouse.down();
 		await page.mouse.move(box.x + mid + 100, y, { steps: 4 });
 		await page.mouse.up();
+		const scrubbed = await loopOf(page);
+		expect(scrubbed.start).toBe(l.start);
+		expect(scrubbed.end).toBe(l.end);
+		const pos = await page.evaluate(() => window.looper.position());
+		const target = await page.evaluate((x) => window.looper.viewport.frameAt(x), mid + 100);
+		expect(Math.abs(pos - target)).toBeLessThan(2);
+
+		// Shift-drag draws a new region in place of the old one.
+		await page.keyboard.down('Shift');
+		await page.mouse.move(box.x + 900, y);
+		await page.mouse.down();
+		await page.mouse.move(box.x + 1000, y, { steps: 4 });
+		await page.mouse.up();
+		await page.keyboard.up('Shift');
 		l = await loopOf(page);
-		expect(l.end - l.start).toBe(len);
-		expect(l.start).toBeGreaterThan(48000);
+		expect(l.start).toBeGreaterThan(scrubbed.end);
+		expect(l.end - l.start).not.toBe(len);
 
 		// [ selects in; Alt+→ moves exactly one sample.
 		await page.keyboard.press('[');
