@@ -12,15 +12,20 @@
 	let { app }: Props = $props();
 	const t = $derived(app.track);
 	const tr = $derived(app.transport);
-	let pos: HTMLSpanElement;
+	let pos: HTMLSpanElement | undefined = $state();
 
 	onMount(() => {
 		let raf = 0;
 		let last = '';
+		let el: HTMLSpanElement | undefined;
 		const frame = () => {
 			raf = requestAnimationFrame(frame);
+			if (pos !== el) {
+				el = pos;
+				last = '';
+			}
 			const text = app.track.loaded ? formatTime(app.position(), app.track.sampleRate) : '—';
-			if (text !== last) {
+			if (pos && text !== last) {
 				last = text;
 				// eslint-disable-next-line svelte/no-dom-manipulating -- rAF-driven readout, not reactive state
 				pos.textContent = text;
@@ -35,7 +40,15 @@
 	<div class="head">
 		<PlayButton playing={tr.playing} disabled={!t.loaded} onclick={() => app.togglePlay()} />
 		<div class="readout">
-			<span class="pos" class:empty={!t.loaded} bind:this={pos} data-testid="position">—</span>
+			{#key t.loaded}
+				<span
+					class="pos"
+					class:empty={!t.loaded}
+					class:appear={t.loaded}
+					bind:this={pos}
+					data-testid="position">—</span
+				>
+			{/key}
 			<span class="dur">/ {t.loaded ? formatTime(t.length, t.sampleRate) : '—'}</span>
 		</div>
 	</div>
@@ -88,6 +101,14 @@
 		margin-top: calc(-1 * var(--s1));
 		&.empty {
 			color: var(--fg-subtle);
+		}
+	}
+	.appear {
+		animation: appear var(--dur-slow) var(--ease-out);
+	}
+	@keyframes appear {
+		from {
+			opacity: 0;
 		}
 	}
 	.dur {

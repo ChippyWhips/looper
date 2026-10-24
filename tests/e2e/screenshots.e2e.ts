@@ -1,5 +1,6 @@
 import { test, type Page } from '@playwright/test';
-import { PHASE, loadFixture } from './helpers';
+import { join } from 'node:path';
+import { FIXTURES, PHASE, loadFixture } from './helpers';
 
 const SIZES = [
 	{ width: 1280, height: 800 },
@@ -70,6 +71,32 @@ const STATES: State[] = [
 			await loadFixture(page, 'song-44100.mp3');
 			await page.getByTestId('title').click();
 			await page.getByRole('menuitem').nth(1).hover();
+			await page.waitForTimeout(700);
+		}
+	},
+	{
+		name: 'shortcuts',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await loadFixture(page, 'song-44100.mp3');
+			await page.keyboard.press('?');
+			await page.waitForTimeout(700);
+		}
+	},
+	{
+		name: 'error',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await page.locator('[data-testid=picker]').setInputFiles(join(FIXTURES, '..', 'robots.txt'));
+			await page.waitForTimeout(700);
+		}
+	},
+	{
+		name: 'drop',
+		setup: async (page) => {
+			await page.goto('/?test');
+			await page.waitForFunction(() => !!window.looper);
+			await page.evaluate(() => (window.looper.view.dropActive = true));
 			await page.waitForTimeout(700);
 		}
 	},

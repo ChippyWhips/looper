@@ -80,12 +80,19 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 ## Phase 7: Polish
 
-- [ ] Shortcuts overlay (?), empty + error states
-- [ ] Full visual pass at 1280×800 and 1512×982
-- [ ] Performance traces vs budgets
-- [ ] Cross-browser smoke (WebKit, Firefox)
-- [ ] README.md
-- [ ] Verify + commit `phase 7`
+- [x] Shortcuts overlay (?), empty + error states
+- [x] Full visual pass at 1280×800 and 1512×982
+- [x] Performance traces vs budgets
+- [x] Cross-browser smoke (WebKit, Firefox)
+- [x] README.md
+- [x] Verify + commit `phase 7`
+
+## Definition of done
+
+- [x] Phases 0–7 complete, with `npm run verify` passing.
+- [x] A real MP3 can be opened, looped, slowed to 50 %, shifted −100 ct, and restored after a reload (`tests/e2e/done.e2e.ts`), with a click-free wrap (offline worklet tests).
+- [x] The stem-separation seams exist and are tested, with no separation code.
+- [x] README.md, PLAN.md and DECISIONS.md are up to date.
 
 ## Screenshot review log
 
@@ -131,3 +138,12 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - Fixed: the panel's `open` state class collided with the row button's `.open` class and laid rows out horizontally.
 - Fixed (Firefox/WebKit): a position report generated before a seek could overwrite it; reports now carry an epoch and stale ones are dropped.
 - Fixed: a debounced save delayed past the next open was dropped; saves now flush before a new track starts loading.
+
+### Phase 7 (full pass, both sizes)
+
+- Checked every state at 1280×800 and 1512×982: empty, loaded, loop on (with count-in, 80 %, −100 ct), loop off, Recent, shortcuts overlay, error, drop target, sample zoom.
+- Against "Do not": no cards or shadows (hairlines only), no eyebrows/helper sentences/emoji, no purple or blue, controls differ per parameter (slider, knob, plain values, text toggles, one filled button), no skeuomorphism, no boxed inputs, no hero/centred column/footer, icons only for play, pause, chevron and ×, no radii/pills/switches, no toasts/tooltips/skeletons (waveform fades in on the Slow tier), only tokenised values (enforced by `tokens.test.ts`), accent never for selection or text.
+- Shortcuts overlay: centred `--bg-raised` panel with a 1 px `--border-strong` border, two mono columns (keys primary, actions muted), no title, no close button; Esc or outside click closes; fades on the Base tier.
+- Error: one line, primary text with a 6 px accent dot. Drop: thin white outline round the waveform area and the single word `Drop`.
+- Added: deck values and the position readout fade in on the Slow tier on first load; later changes are instant.
+- Fixed: the drop screenshot state ran before the app mounted.

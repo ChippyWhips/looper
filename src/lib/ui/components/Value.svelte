@@ -140,7 +140,9 @@
 			{onpointermove}
 			{onpointerup}
 			{onwheel}
-			onkeydown={onkey}>{shown}</span
+			onkeydown={onkey}
+			>{#key value === null}<span class="text" class:appear={value !== null}>{shown}</span
+				>{/key}</span
 		>
 	{/if}{#if suffix}<span class="suffix">{suffix}</span>{/if}
 </span>
@@ -164,6 +166,15 @@
 	.read {
 		cursor: ns-resize;
 		transition: color var(--dur-fast) var(--ease-out);
+	}
+	/* Values fade in on the Slow tier when a track first loads; changes after that are instant. */
+	.appear {
+		animation: appear var(--dur-slow) var(--ease-out);
+	}
+	@keyframes appear {
+		from {
+			opacity: 0;
+		}
 	}
 	.inactive {
 		color: var(--fg-subtle);

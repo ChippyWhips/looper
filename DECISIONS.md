@@ -76,3 +76,12 @@ Every deviation from SPEC.md, and every judgement call on an ambiguity, with its
 - **Removing the open track** from Recent unloads it (empty state).
 - **WebKit tests use a persistent context**: Playwright's ephemeral WebKit contexts have no OPFS (`UnknownError`); persistent ones work, so the persistence test runs in a persistent context there. Real Safari is not affected.
 - **Stale position reports.** Reports carry an epoch (count of load/play/pause/seek commands applied); the engine ignores reports older than the last such command it sent.
+
+## Polish
+
+- **Shortcut overlay rows** combine related keys (e.g. `⇧ ← / →`) so the two columns stay short; it lists every shortcut in the spec table.
+- **First-load fade.** Deck values (and the position readout) fade in on the Slow tier only when they change from `—` to a value; scrubbing and other changes stay instant.
+
+## Open issues
+
+No problem needed the three-attempts escape hatch. Known limitations are listed in README.md ("Known issues"); none blocks the acceptance criteria.

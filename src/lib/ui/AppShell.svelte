@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { App } from '../state/app.svelte';
 	import Deck from './Deck.svelte';
+	import Shortcuts from './Shortcuts.svelte';
 	import { handleKey } from './keyboard';
 	import TopBar from './TopBar.svelte';
 	import Waveform from './Waveform.svelte';
@@ -86,6 +87,7 @@
 	<Waveform {app} {input} />
 	<!-- Stem lanes (phase 8) mount here, between the waveform and the deck. -->
 	<Deck {app} />
+	<Shortcuts {app} />
 	<input
 		bind:this={picker}
 		class="picker"
