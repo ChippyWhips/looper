@@ -3,6 +3,7 @@ import OpfsWorker from './opfs.worker.ts?worker';
 import type { OpfsRequest, OpfsResponse } from './opfs.worker';
 import { decodePeaks, encodePeaks } from './peaks-codec';
 import { migrate, type Settings } from './settings-schema';
+import type { SeparationModel, StemName, StemPcm } from '../separation/types';
 
 export const RECENT_MAX = 3;
 const TRACKS = ['tracks'];
@@ -18,6 +19,14 @@ export interface RecentEntry {
 	sampleRate: number;
 	size: number;
 	openedAt: number;
+}
+
+export interface StemMeta {
+	model: SeparationModel;
+	sampleRate: number;
+	length: number;
+	channels: number;
+	stems: { name: StemName; rmsDb: number }[];
 }
 
 export interface Analysis {
@@ -208,5 +217,65 @@ export class TrackStore {
 
 	saveAnalysis(id: string, a: Analysis): Promise<void> {
 		return this.writeJson([...TRACKS, id, 'analysis.json'], a);
+	}
+
+	// Stems: tracks/<id>/stems/meta.json, <name>.pcm (planar 16-bit), <name>.peaks
+
+	async saveStems(
+		id: string,
+		meta: StemMeta,
+		stems: StemPcm[],
+		peaks: Map<StemName, Peaks>
+	): Promise<void> {
+		await this.clearStems(id);
+		for (const s of stems) {
+			const len = s.channels[0].length;
+			const data = new ArrayBuffer(len * 2 * s.channels.length);
+			s.channels.forEach((c, i) => new Int16Array(data, i * len * 2, len).set(c));
+			await this.call({ op: 'write', path: [...TRACKS, id, 'stems', `${s.name}.pcm`], data }, [
+				data
+			]);
+			const p = peaks.get(s.name);
+			if (p) {
+				const pd = encodePeaks(p);
+				await this.call(
+					{ op: 'write', path: [...TRACKS, id, 'stems', `${s.name}.peaks`], data: pd },
+					[pd]
+				);
+			}
+		}
+		// Written last, so a half-written set is never treated as complete.
+		await this.writeJson([...TRACKS, id, 'stems', 'meta.json'], meta);
+	}
+
+	async loadStemMeta(id: string): Promise<StemMeta | null> {
+		const m = (await this.readJson([...TRACKS, id, 'stems', 'meta.json'])) as StemMeta | null;
+		return m && Array.isArray(m.stems) ? m : null;
+	}
+
+	async loadStemPcm(id: string, name: StemName, meta: StemMeta): Promise<Int16Array[] | null> {
+		const buf = await this.call<ArrayBuffer | null>({
+			op: 'read',
+			path: [...TRACKS, id, 'stems', `${name}.pcm`]
+		});
+		if (!buf || buf.byteLength !== meta.length * 2 * meta.channels) return null;
+		return Array.from(
+			{ length: meta.channels },
+			(_, i) => new Int16Array(buf, i * meta.length * 2, meta.length)
+		);
+	}
+
+	async loadStemPeaks(id: string, name: StemName): Promise<Peaks | null> {
+		const buf = await this.call<ArrayBuffer | null>({
+			op: 'read',
+			path: [...TRACKS, id, 'stems', `${name}.peaks`]
+		});
+		return buf ? decodePeaks(buf) : null;
+	}
+
+	/** Remove all stems, keeping the reserved directory. */
+	async clearStems(id: string): Promise<void> {
+		await this.call({ op: 'remove', path: [...TRACKS, id, 'stems'] });
+		await this.call({ op: 'mkdir', path: [...TRACKS, id, 'stems'] });
 	}
 }

@@ -151,3 +151,83 @@ describe('count-in', () => {
 		});
 	}
 });
+
+describe('mix vs stems', () => {
+	it('loop, speed, pitch and count-in render the same from stems that sum to the mix', async () => {
+		// Quantise the mix to 16-bit steps so 16-bit stems can sum to it exactly.
+		const base = sine(3, 440, 0.5);
+		const q = (x: number) => Math.round(x * 32768) / 32768;
+		const mix = base.map(q);
+		const a = new Int16Array(mix.length);
+		const b = new Int16Array(mix.length);
+		for (let i = 0; i < mix.length; i++) {
+			const v = Math.round(mix[i] * 32768);
+			a[i] = Math.round(v * 0.7);
+			b[i] = v - a[i];
+		}
+		const silent = new Int16Array(mix.length);
+		const common = [
+			{ type: 'params', speed: 0.75, cents: -100 },
+			{ type: 'loop', start: 10000, end: 50000, on: true },
+			{ type: 'play', from: 10000, countInBpm: 120 }
+		] as const;
+		const stems = {
+			type: 'addSources',
+			sources: [
+				{
+					id: 'a',
+					kind: 'stem',
+					label: 'A',
+					channels: [a, a],
+					gain: 1,
+					muted: false,
+					soloed: false
+				},
+				{
+					id: 'b',
+					kind: 'stem',
+					label: 'B',
+					channels: [b, b],
+					gain: 1,
+					muted: false,
+					soloed: false
+				},
+				{
+					id: 's',
+					kind: 'stem',
+					label: 'S',
+					channels: [silent, silent],
+					gain: 1,
+					muted: false,
+					soloed: false
+				}
+			]
+		} as const;
+		const fromMix = await renderCore({
+			sampleRate: SR,
+			channels: [mix, mix],
+			frames: SR * 5,
+			setup: [...common]
+		});
+		const fromStems = await renderCore({
+			sampleRate: SR,
+			channels: [mix, mix],
+			frames: SR * 5,
+			setup: [
+				stems,
+				// Muting the silent stem switches playback to the stem sum before play starts.
+				{
+					type: 'sources',
+					states: [{ id: 's', kind: 'stem', label: 'S', gain: 1, muted: true, soloed: false }]
+				},
+				...common
+			]
+		});
+		let maxDiff = 0;
+		for (let i = 0; i < fromMix.out.length; i++)
+			maxDiff = Math.max(maxDiff, Math.abs(fromMix.out[i] - fromStems.out[i]));
+		expect(maxDiff).toBeLessThan(1e-4);
+		// And it is not trivially silent.
+		expect(Math.max(...fromStems.out.subarray(SR * 3, SR * 4))).toBeGreaterThan(0.3);
+	});
+});

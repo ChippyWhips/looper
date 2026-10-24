@@ -219,8 +219,21 @@ export class Engine {
 		this.send({ type: 'loop', ...this.loop });
 	}
 
+	/** Mute/solo/gain updates; set changes crossfade in the worklet. */
 	setSources(states: SourceState[]): void {
 		this.send({ type: 'sources', states });
+	}
+
+	/** Hand stem sources to the worklet (buffers are transferred). */
+	addSources(sources: SourcePayload[]): void {
+		const transfer = sources.flatMap((s) =>
+			(s.channels as ArrayBufferView[]).map((c) => c.buffer as ArrayBuffer)
+		);
+		this.send({ type: 'addSources', sources }, transfer);
+	}
+
+	removeSources(ids: string[]): void {
+		this.send({ type: 'removeSources', ids });
 	}
 
 	async play(from: number, countInBpm: number | null = null): Promise<void> {

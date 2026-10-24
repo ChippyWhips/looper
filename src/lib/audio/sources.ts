@@ -6,7 +6,8 @@ export interface AudioSource {
 	id: string;
 	kind: SourceKind;
 	label: string;
-	channels: Float32Array[];
+	/** Float PCM, or 16-bit PCM (stems) scaled by 1/32768 on read. */
+	channels: Float32Array[] | Int16Array[];
 	gain: number;
 	muted: boolean;
 	soloed: boolean;
@@ -37,6 +38,9 @@ export function resolveTargets(sources: readonly SourceState[]): Map<string, num
 
 interface Voice {
 	source: AudioSource;
+	scale: number;
+	/** Linear ramp (sum-preserving) instead of equal-power. */
+	linear: boolean;
 	from: number;
 	to: number;
 	/** Frames elapsed in the current ramp; ≥ rampFrames when settled. */
@@ -57,9 +61,34 @@ export class Mixer {
 		const targets = resolveTargets(sources);
 		this.voices = sources.map((s) => {
 			const g = targets.get(s.id) ?? 0;
-			return { source: s, from: g, to: g, t: this.rampFrames };
+			return { source: s, scale: scaleOf(s), linear: false, from: g, to: g, t: this.rampFrames };
 		});
 		this.length = sources.reduce((m, s) => Math.max(m, s.channels[0]?.length ?? 0), 0);
+	}
+
+	/** Add sources at runtime; they start silent and ramp in if the resolved set includes them. */
+	addSources(sources: AudioSource[]): void {
+		for (const s of sources) {
+			this.voices = this.voices.filter((v) => v.source.id !== s.id);
+			this.voices.push({
+				source: s,
+				scale: scaleOf(s),
+				linear: false,
+				from: 0,
+				to: 0,
+				t: this.rampFrames
+			});
+		}
+		this.update(this.voices.map((v) => v.source));
+	}
+
+	removeSources(ids: string[]): void {
+		this.voices = this.voices.filter((v) => !ids.includes(v.source.id));
+		this.update(this.voices.map((v) => v.source));
+	}
+
+	get ids(): string[] {
+		return this.voices.map((v) => v.source.id);
 	}
 
 	/** Update gain / mute / solo; ramps start from each voice's current gain. */
@@ -72,18 +101,25 @@ export class Mixer {
 			v.source.soloed = st.soloed;
 		}
 		const targets = resolveTargets(this.voices.map((v) => v.source));
+		// Stems sum to the mix, so a mix <-> stems switch is correlated: ramp linearly so the sum
+		// stays constant. Changes among stems alone are uncorrelated: equal-power.
+		const mixSwitch = this.voices.some(
+			(v) => v.source.kind === 'mix' && (targets.get(v.source.id) ?? 0) !== v.to
+		);
 		for (const v of this.voices) {
 			const to = targets.get(v.source.id) ?? 0;
 			if (to === v.to) continue;
 			v.from = this.gainOf(v);
 			v.to = to;
 			v.t = 0;
+			v.linear = mixSwitch;
 		}
 	}
 
 	private gainOf(v: Voice): number {
 		if (v.t >= this.rampFrames) return v.to;
 		const p = v.t / this.rampFrames;
+		if (v.linear) return v.from + (v.to - v.from) * p;
 		return v.from * fadeOut(p) + v.to * fadeIn(p);
 	}
 
@@ -95,7 +131,7 @@ export class Mixer {
 			if (g === 0) continue;
 			const chans = v.source.channels;
 			const ch = chans[c < chans.length ? c : chans.length - 1];
-			if (frame >= 0 && frame < ch.length) s += g * ch[frame];
+			if (frame >= 0 && frame < ch.length) s += g * v.scale * ch[frame];
 		}
 		return s;
 	}
@@ -108,4 +144,8 @@ export class Mixer {
 	get settled(): boolean {
 		return this.voices.every((v) => v.t >= this.rampFrames);
 	}
+}
+
+function scaleOf(s: AudioSource): number {
+	return s.channels[0] instanceof Int16Array ? 1 / 32768 : 1;
 }

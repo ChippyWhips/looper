@@ -106,6 +106,12 @@ export class PlayerCore {
 			case 'sources':
 				this.mixer.update(msg.states);
 				break;
+			case 'addSources':
+				this.mixer.addSources(msg.sources.map((x) => ({ ...x })));
+				break;
+			case 'removeSources':
+				this.mixer.removeSources(msg.ids);
+				break;
 			case 'play':
 				if (!this.loaded) break;
 				this.start(msg.from, msg.countInBpm, frame);

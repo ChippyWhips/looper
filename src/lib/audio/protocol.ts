@@ -2,12 +2,14 @@ import type { SourceKind, SourceState } from './sources';
 
 export interface SourcePayload extends SourceState {
 	kind: SourceKind;
-	channels: Float32Array[];
+	channels: Float32Array[] | Int16Array[];
 }
 
 export type ToWorklet =
 	| { type: 'load'; sources: SourcePayload[] }
 	| { type: 'sources'; states: SourceState[] }
+	| { type: 'addSources'; sources: SourcePayload[] }
+	| { type: 'removeSources'; ids: string[] }
 	| { type: 'play'; from: number; countInBpm: number | null }
 	| { type: 'pause' }
 	| { type: 'seek'; frame: number }
