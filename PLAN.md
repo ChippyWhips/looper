@@ -87,6 +87,37 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - [x] README.md
 - [x] Verify + commit `phase 7`
 
+## Phase 8: Stem separation (branch `stems`)
+
+- [ ] Runtime: build `demucs-wasm` (demucs-rs, Apache-2.0, pinned commit) with wasm-pack; vendor the `.wasm` + JS glue under `vendor/demucs-wasm/` with a rebuild script
+- [ ] Prove it in a worker on WebGPU (Chromium); probe WebGPU in Playwright WebKit and Firefox, record results
+- [ ] Separator contract: track ID + planar PCM in; progress `{fraction, stage}`; `AbortSignal` cancel; per-stem Int16 PCM + metadata out. No Workers / GPU / OPFS handles across it
+- [ ] `ModelStore` interface + browser implementation (Cache Storage, one-off download with progress)
+- [ ] Browser runtime module (`separation/browser/`): worker + `BrowserSeparator`; selected only in `separation/index.ts`
+- [ ] `StubSeparator` for tests (deterministic stems that sum to the mix, configurable timing, one near-silent stem)
+- [ ] Track store: `stems/meta.json`, `stems/<name>.pcm` (16-bit), `stems/<name>.peaks`; read/write/delete only via the store; `settings.stems`
+- [ ] Engine: add/remove stem sources at runtime (Int16 in the worklet mixer), mute/solo updates crossfading 20 ms
+- [ ] Jobs: auto-start when a track has no stems; one at a time; cancel on opening another track; Stop → `Separate`; failure → `Stems failed` + `Retry`; unavailable state
+- [ ] Top bar: `● Stems 42%` + `Stop`; `Stems` lanes toggle
+- [ ] Lanes: 40 px each, 96 px gutter (name, `M`, `S`), shared viewport/playhead/loop band, near-silent stems hidden, Slow-tier fade in
+- [ ] Main waveform shows the audible sum (peaks recomputed in a worker on set changes)
+- [ ] Recent row: `Re-separate (fine)` (htdemucs_ft)
+- [ ] Visualiser drops to 30 fps while separating
+- [ ] Tests: mixer switching, mute/solo, cancellation, stem storage + eviction, all with the stub
+- [ ] Measure: 4–5 min track separation time on this M1 in Chromium; UI ≥ 30 fps during separation
+- [ ] Docs + verify + commit
+
+## Phase 9: Tauri (future, not started)
+
+What changes when the app moves into a Tauri shell on macOS:
+
+- **Separator**: a native implementation calling demucs-rs on Metal through a Tauri command, selected in `separation/index.ts`. The browser runtime module is dropped from the desktop build.
+- **Large PCM over IPC**: rather than returning ~300 MB of stems through IPC, the native separator should write stems straight into the track directory and return metadata only. The contract allows this by letting the native store and native separator share the file layout; decide the exact handoff then.
+- **TrackStore**: a native file-system store (app data directory) with the same API; OPFS code stays for the web build. Migration of existing OPFS data is optional (private single user).
+- **ModelStore**: bundle `htdemucs_6s` with the app or cache it in the app data directory; no runtime download.
+- **WKWebView**: playback, worklet, WebGL2 and workers must keep working in WebKit (they do in Playwright WebKit today). WebGPU is not needed there once separation is native.
+- **Shell concerns**: native menu (⌘O, ?), file drops via Tauri events, window minimum 1280×800, CSP allowing the worklet, workers and wasm, autoplay policy for the AudioContext.
+
 ## Definition of done
 
 - [x] Phases 0–7 complete, with `npm run verify` passing.
