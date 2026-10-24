@@ -12,3 +12,4 @@ design/
 static/
 screenshots/
 .claude/
+vendor/

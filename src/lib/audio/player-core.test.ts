@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { centroid, cents, maxJump, onsets, peakFrequency } from './measure';
 import { renderCore } from './test-render';
+import type { ToWorklet } from './protocol';
 
 const SR = 48000;
 
@@ -171,7 +172,7 @@ describe('mix vs stems', () => {
 			{ type: 'loop', start: 10000, end: 50000, on: true },
 			{ type: 'play', from: 10000, countInBpm: 120 }
 		] as const;
-		const stems = {
+		const stems: ToWorklet = {
 			type: 'addSources',
 			sources: [
 				{
@@ -202,7 +203,7 @@ describe('mix vs stems', () => {
 					soloed: false
 				}
 			]
-		} as const;
+		};
 		const fromMix = await renderCore({
 			sampleRate: SR,
 			channels: [mix, mix],
