@@ -93,6 +93,22 @@ test.describe('stems @stems', () => {
 		expect(await lanes(page)).toEqual(['vocals:m', 'guitar', 'bass']);
 	});
 
+	test('a separator that persists its own stems (as the native one does) installs them @smoke', async ({
+		app: page
+	}) => {
+		await page.goto('/?test&separator=stub-persisted');
+		await loadFixture(page, 'sine-440-48000.wav');
+		await expect.poll(() => status(page), { timeout: 10000 }).toBe('done');
+		expect(await lanes(page)).toEqual(['vocals', 'guitar', 'bass']);
+		await page.getByRole('button', { name: 'Mute Guitar' }).click();
+		await expect.poll(() => page.evaluate(() => !!window.looper.track.audiblePeaks)).toBe(true);
+		await page.reload();
+		await expect
+			.poll(() => page.evaluate(() => window.looper?.stems.status ?? null), { timeout: 15000 })
+			.toBe('done');
+		expect(await lanes(page)).toEqual(['vocals', 'guitar:m', 'bass']);
+	});
+
 	test('opening another track cancels the running job', async ({ app: page }) => {
 		await page.goto('/?test&separator=stub-slow');
 		await loadFixture(page, 'sine-440-48000.wav');

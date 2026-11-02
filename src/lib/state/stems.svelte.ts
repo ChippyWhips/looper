@@ -189,6 +189,22 @@ export class StemsController {
 	}
 
 	private async install(id: string, set: StemSet, seq: number): Promise<void> {
+		if (set.persisted) {
+			// Already written to the track's storage by the separator (native): read it back.
+			const meta = await this.app.store.loadStemMeta(id).catch(() => null);
+			if (seq !== this.seq) return;
+			if (!meta) {
+				this.status = 'failed';
+				this.job = null;
+				return;
+			}
+			this.removeSources();
+			this.lanes = [];
+			await this.restore(id, meta, undefined, seq);
+			this.job = null;
+			this.app.scheduleSave();
+			return;
+		}
 		const ordered = [...set.stems].sort(
 			(a, b) => STEM_ORDER.indexOf(a.name) - STEM_ORDER.indexOf(b.name)
 		);

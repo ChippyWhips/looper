@@ -30,7 +30,11 @@ function signalsmithCore(): Plugin {
 	};
 }
 
+/** True when the Tauri CLI drives the build (desktop app); selects native storage and separation. */
+const DESKTOP = !!process.env.TAURI_ENV_PLATFORM;
+
 export default defineConfig({
+	define: { __DESKTOP__: JSON.stringify(DESKTOP) },
 	plugins: [
 		signalsmithCore(),
 		sveltekit({

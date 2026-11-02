@@ -18,6 +18,11 @@ export interface StubOptions {
 	fail?: boolean;
 	/** After failing, report 'unavailable' (as a crashed runtime does). */
 	breaks?: boolean;
+	/**
+	 * Write the stems into storage and return metadata only, as the native separator does.
+	 * Receives the set to store; resolves once written.
+	 */
+	persist?: (trackId: string, set: StemSet) => Promise<void>;
 }
 
 /**
@@ -75,6 +80,9 @@ export class StubSeparator implements Separator {
 			const channels = ch.map((c) => toInt16(c.map((v) => v * g)));
 			return { name, channels, rmsDb: rmsDb(channels) };
 		});
-		return { model, sampleRate: input.sampleRate, length: ch[0].length, stems };
+		const set: StemSet = { model, sampleRate: input.sampleRate, length: ch[0].length, stems };
+		if (!this.o.persist) return set;
+		await this.o.persist(input.trackId, set);
+		return { ...set, stems: stems.map((x) => ({ ...x, channels: [] })), persisted: true };
 	}
 }

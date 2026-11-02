@@ -39,7 +39,7 @@ export interface SeparationProgress {
 
 export interface StemPcm {
 	name: StemName;
-	/** Planar 16-bit PCM at the input sample rate, input length. */
+	/** Planar 16-bit PCM at the input sample rate, input length. Empty when the set is persisted. */
 	channels: Int16Array[];
 	/** Overall RMS in dBFS; stems under EMPTY_STEM_DB get no lane. */
 	rmsDb: number;
@@ -50,6 +50,11 @@ export interface StemSet {
 	sampleRate: number;
 	length: number;
 	stems: StemPcm[];
+	/**
+	 * True when the separator has already written the stems (PCM, peaks, meta) into the track's
+	 * storage itself, so no PCM crosses back; callers then read them through the track store.
+	 */
+	persisted?: boolean;
 }
 
 export type SeparatorAvailability = 'gpu' | 'cpu' | 'unavailable';

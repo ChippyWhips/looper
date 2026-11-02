@@ -1,6 +1,5 @@
 import type { Peaks } from '../analysis/peaks';
-import OpfsWorker from './opfs.worker.ts?worker';
-import type { OpfsRequest, OpfsResponse } from './opfs.worker';
+import { defaultBackend, type StoreBackend, type StoreOp } from './backends';
 import { decodePeaks, encodePeaks } from './peaks-codec';
 import { migrate, type Settings } from './settings-schema';
 import type { SeparationModel, StemName, StemPcm } from '../separation/types';
@@ -33,41 +32,27 @@ export interface Analysis {
 	tempo: number | null;
 }
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
-type Op = OpfsRequest extends infer R ? (R extends { id: number } ? Omit<R, 'id'> : never) : never;
-
 const PENDING_KEY = (id: string) => `looper:pending:${id}`;
 
 /**
- * Track storage in OPFS, one directory per SHA-256 of the file bytes:
+ * Track storage, one directory per SHA-256 of the file bytes:
  *   tracks/<hash>/original, peaks.bin, onsets.bin, analysis.json, settings.json, stems/
- * plus recent.json at the root. Every write goes through the OPFS worker.
+ * plus recent.json at the root. Every write goes through the backend: the OPFS worker in the
+ * browser, Tauri commands writing the app data directory on desktop.
  */
 export class TrackStore {
-	private worker: Worker | null = null;
-	private seq = 0;
-	private pending = new Map<number, Pending>();
+	private backend: StoreBackend;
 
-	get available(): boolean {
-		return typeof navigator !== 'undefined' && !!navigator.storage?.getDirectory;
+	constructor(backend: StoreBackend = defaultBackend()) {
+		this.backend = backend;
 	}
 
-	private call<T>(op: Op, transfer: Transferable[] = []): Promise<T> {
-		if (!this.worker) {
-			this.worker = new OpfsWorker();
-			this.worker.onmessage = (e: MessageEvent<OpfsResponse>) => {
-				const p = this.pending.get(e.data.id);
-				if (!p) return;
-				this.pending.delete(e.data.id);
-				if (e.data.ok) p.resolve(e.data.result);
-				else p.reject(new Error(e.data.error));
-			};
-		}
-		const id = ++this.seq;
-		return new Promise<T>((resolve, reject) => {
-			this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
-			this.worker!.postMessage({ ...op, id } as OpfsRequest, transfer);
-		});
+	get available(): boolean {
+		return this.backend.available;
+	}
+
+	private call<T>(op: StoreOp, transfer: Transferable[] = []): Promise<T> {
+		return this.backend.call<T>(op, transfer);
 	}
 
 	private async writeJson(path: string[], value: unknown): Promise<void> {
