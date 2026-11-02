@@ -13,3 +13,5 @@ static/
 screenshots/
 .claude/
 vendor/
+src-tauri/target/
+src-tauri/gen/

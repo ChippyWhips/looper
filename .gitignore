@@ -28,3 +28,7 @@ test-results
 /static/fixtures/
 /test-results/
 /playwright-report/
+
+# Tauri
+/src-tauri/target/
+/src-tauri/gen/schemas/
