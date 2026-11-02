@@ -54,7 +54,13 @@ npm run desktop:dev
 npm run desktop:build
 ```
 
-`desktop:build` produces `src-tauri/target/release/bundle/macos/Looper.app`. Tracks, settings and stems live in `~/Library/Application Support/app.looper.desktop/looper/`; the model downloads once (84 MB) into `…/models/`. Rust unit tests:
+`desktop:build` produces `src-tauri/target/release/bundle/macos/Looper.app`. Tracks, settings and stems live in `~/Library/Application Support/app.looper.desktop/looper/`; the model downloads once (84 MB) into `…/models/`. To build and install it into `~/Applications` (Spotlight/Launchpad; quits a running Looper, replaces the bundle, keeps data):
+
+```bash
+npm run desktop:install
+```
+
+Rust unit tests:
 
 ```bash
 npm run test:native

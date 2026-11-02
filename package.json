@@ -20,6 +20,7 @@
 		"tauri": "tauri",
 		"desktop:dev": "tauri dev",
 		"desktop:build": "tauri build",
+		"desktop:install": "tauri build && (osascript -e 'quit app \"Looper\"' || true) && rm -rf ~/Applications/Looper.app && ditto src-tauri/target/release/bundle/macos/Looper.app ~/Applications/Looper.app",
 		"test:native": "cd src-tauri && cargo test"
 	},
 	"devDependencies": {
