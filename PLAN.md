@@ -72,7 +72,7 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 
 - [x] opfs.worker.ts (createSyncAccessHandle), hash.ts (SHA-256), track-store.ts
 - [x] settings-schema.ts (version 1, migration hook, `stems` absent), reserved `stems/` dir
-- [x] Recent list (3), eviction removes dir, content match, debounce 500 ms + pagehide
+- [x] Recent list (5), eviction removes dir, content match, debounce 500 ms + pagehide
 - [x] Restore most recent on launch, paused at last position
 - [x] Recent dropdown UI (320 px, rows, ×)
 - [x] E2E: open 4, reload, 3 remain with settings, evicted dir gone

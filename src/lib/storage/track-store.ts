@@ -4,7 +4,7 @@ import { decodePeaks, encodePeaks } from './peaks-codec';
 import { migrate, type Settings } from './settings-schema';
 import type { SeparationModel, StemName, StemPcm } from '../separation/types';
 
-export const RECENT_MAX = 3;
+export const RECENT_MAX = 5;
 const TRACKS = ['tracks'];
 const ORIGINAL = 'original';
 

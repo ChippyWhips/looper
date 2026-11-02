@@ -55,7 +55,7 @@ The app lets one guitarist open a track, loop a section with sample-accurate pre
 - Pitch shift in cents, independent of speed
 - An optional one-bar count-in at the track's detected tempo
 - A live, audio-reactive gradient visualiser
-- A Recent tracks list (3 tracks) that restores audio and all settings
+- A Recent tracks list (5 tracks) that restores audio and all settings
 - Keyboard shortcuts for every frequent action
 
 **Out of scope for this run**
@@ -247,7 +247,7 @@ The visualiser is a WebGL2 audio-reactive mesh gradient. Its visual behaviour is
 
 - **What's stored:** each track is stored in OPFS under the SHA-256 of its file bytes: the original file, cached peaks, cached onsets and `settings.json` (loop, loop on/off, speed, pitch, count-in, tempo override, last position, zoom and scroll).
 - **Write path:** all OPFS writes go through a Web Worker using `createSyncAccessHandle`, for Safari compatibility.
-- **List size:** the list holds the 3 most recently opened tracks. Opening a fourth evicts the oldest, including all its stored data.
+- **List size:** the list holds the 5 most recently opened tracks. Opening a sixth evicts the oldest, including all its stored data.
 - **Recognition:** dropping a file already in the list restores it, matched by content rather than name.
 - **Saving:** settings save debounced (500 ms) and on `pagehide`.
 - **On launch:** the most recent track reopens, paused at its last position.
@@ -570,7 +570,7 @@ When a track is opened, the app separates it into stems in the background, in th
 - **Keep the UI smooth:** run separation in a dedicated worker. Chunk GPU work so the UI keeps 60 fps; the visualiser may drop to 30 fps while separation runs.
 - **Storage:**
   - Store stems in the track's OPFS directory as 16-bit PCM, with their peaks.
-  - Stems count towards the 3-track Recent list. Eviction removes them.
+  - Stems count towards the 5-track Recent list. Eviction removes them.
   - Expect about 300–350 MB per separated track.
 
 ### Seams to build in this run
@@ -605,7 +605,7 @@ Build the riskiest part first: phase 1 proves the audio engine before any real U
 3. **Loop editing:** drag create/move/resize, onset and zero-crossing snapping, nudging, typed fields, the loop toggle and the keyboard shortcuts for loops.
 4. **Speed and pitch controls, tempo detection and count-in** in the control deck.
 5. **Visualiser:** WebGL2 gradient, analyser features, reduced-motion and fallback.
-6. **Persistence:** OPFS worker, hashing, the Recent tracks list (3) with eviction, restore on launch.
+6. **Persistence:** OPFS worker, hashing, the Recent tracks list (5) with eviction, restore on launch.
 7. **Polish**
    - A full pass against Visual design at both screenshot sizes.
    - The shortcuts overlay, and empty and error states.

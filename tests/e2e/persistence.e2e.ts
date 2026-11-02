@@ -1,7 +1,14 @@
 import { expect, type Page } from '@playwright/test';
 import { loadFixture, test } from './helpers';
 
-const FILES = ['sine-440-48000.wav', 'sine-1k-48000.wav', 'click-120-48000.wav', 'sweep-48000.wav'];
+const FILES = [
+	'sine-440-48000.wav',
+	'sine-1k-48000.wav',
+	'click-120-48000.wav',
+	'sweep-48000.wav',
+	'sine-440-44100.wav',
+	'sine-1k-44100.wav'
+];
 
 async function settings(page: Page) {
 	return page.evaluate(() => {
@@ -28,7 +35,7 @@ async function opfsTracks(page: Page): Promise<string[]> {
 }
 
 test.describe('persistence @smoke', () => {
-	test('4 tracks opened → reload → 3 remain with settings; evicted directory is gone', async ({
+	test('6 tracks opened → reload → 5 remain with settings; evicted directory is gone', async ({
 		app: page
 	}) => {
 		await page.goto('/?test');
@@ -37,7 +44,7 @@ test.describe('persistence @smoke', () => {
 			await loadFixture(page, FILES[i]);
 			await expect
 				.poll(() => page.evaluate(() => window.looper.recent.length))
-				.toBe(Math.min(3, i + 1));
+				.toBe(Math.min(5, i + 1));
 			await page.evaluate((i) => {
 				const a = window.looper;
 				a.setLoopRange(10000 + i * 1000, 60000 + i * 1000, true);
@@ -51,29 +58,29 @@ test.describe('persistence @smoke', () => {
 			saved.push(await settings(page));
 		}
 		const evicted = saved[0].id!;
-		expect(new Set(saved.map((s) => s.id)).size).toBe(4);
+		expect(new Set(saved.map((s) => s.id)).size).toBe(6);
 
 		await page.reload();
 		await expect
 			.poll(() => page.evaluate(() => window.looper?.track.loaded ?? false), { timeout: 15000 })
 			.toBe(true);
 		// The most recent track reopens, paused at its last position.
-		expect(await settings(page)).toEqual(saved[3]);
+		expect(await settings(page)).toEqual(saved[5]);
 		expect(await page.evaluate(() => window.looper.transport.state)).toBe('stopped');
-		expect(await page.evaluate(() => window.looper.position())).toBe(30300);
+		expect(await page.evaluate(() => window.looper.position())).toBe(30500);
 
 		const recent = await page.evaluate(() => window.looper.recent.map((e) => e.id));
-		expect(recent).toEqual([saved[3].id, saved[2].id, saved[1].id]);
+		expect(recent).toEqual([5, 4, 3, 2, 1].map((i) => saved[i].id));
 
 		// Each remaining track restores its settings from the Recent list.
 		await page.getByTestId('title').click();
-		await page.getByRole('menuitem').nth(2).click();
+		await page.getByRole('menuitem').nth(4).click();
 		await expect.poll(() => page.evaluate(() => window.looper.track.id)).toBe(saved[1].id);
 		await expect.poll(() => settings(page)).toEqual(saved[1]);
 
 		const dirs = await opfsTracks(page);
 		expect(dirs).not.toContain(evicted);
-		expect(dirs.sort()).toEqual([saved[1].id, saved[2].id, saved[3].id].sort());
+		expect(dirs.sort()).toEqual([1, 2, 3, 4, 5].map((i) => saved[i].id!).sort());
 
 		// Re-opening a file already in the list is recognised by content.
 		await loadFixture(page, FILES[2]);
