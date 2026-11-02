@@ -18,7 +18,13 @@
 				"minWidth": 1280,
 				"minHeight": 800,
 				"dragDropEnabled": false,
-				"backgroundColor": "#0e0e0e"
+				"backgroundColor": "#0e0e0e",
+				"titleBarStyle": "Overlay",
+				"hiddenTitle": true,
+				"trafficLightPosition": {
+					"x": 16,
+					"y": 22
+				}
 			}
 		],
 		"security": {
@@ -28,6 +34,12 @@
 	"bundle": {
 		"active": true,
 		"targets": ["app"],
-		"icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.png"]
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.png"
+		]
 	}
 }

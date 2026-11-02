@@ -16,8 +16,10 @@
 	const st = $derived(app.stems);
 </script>
 
-<header class="top">
-	<span class="name">{APP_NAME}</span>
+<!-- data-tauri-drag-region: in the desktop app, empty top-bar space drags the window and
+     double-click zooms it; controls inside keep their clicks. Inert in the browser. -->
+<header class="top" data-tauri-drag-region>
+	<span class="name" data-tauri-drag-region>{APP_NAME}</span>
 	{#if t.loaded || t.name || app.recent.length}
 		<span class="anchor">
 			<button
@@ -75,6 +77,10 @@
 		gap: var(--s5);
 		height: var(--topbar-h);
 		padding: 0 var(--s4);
+		/* Desktop: the window's traffic lights sit in the bar's left edge. */
+		:global(.desktop) & {
+			padding-left: calc(var(--traffic-lights-w) + var(--s5));
+		}
 		border-bottom: var(--line) solid var(--border-subtle);
 		background: var(--bg-default);
 	}

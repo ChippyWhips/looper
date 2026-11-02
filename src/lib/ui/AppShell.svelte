@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { runAutotest } from '../platform/autotest';
 	import { App } from '../state/app.svelte';
 	import Deck from './Deck.svelte';
 	import Lanes from './Lanes.svelte';
@@ -8,6 +9,9 @@
 	import TopBar from './TopBar.svelte';
 	import Waveform from './Waveform.svelte';
 	import { WaveformInput } from './waveform/input.svelte';
+
+	// Desktop window chrome (traffic lights over the top bar) keys off this class.
+	if (__DESKTOP__) document.documentElement.classList.add('desktop');
 
 	const app = new App();
 	const input = new WaveformInput(app);
@@ -45,7 +49,7 @@
 
 	onMount(() => {
 		void app.engine.prewarm([48000, 44100]);
-		void app.restore();
+		void app.restore().then(() => runAutotest(app));
 		const stopAutosave = app.startAutosave();
 		const hide = () => app.onPageHide();
 		const vis = () => document.hidden && app.flushSave();

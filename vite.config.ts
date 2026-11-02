@@ -35,6 +35,8 @@ const DESKTOP = !!process.env.TAURI_ENV_PLATFORM;
 
 export default defineConfig({
 	define: { __DESKTOP__: JSON.stringify(DESKTOP) },
+	// The Tauri window loads devUrl (port 5173); fail rather than serve it from another port.
+	server: { port: 5173, strictPort: DESKTOP },
 	plugins: [
 		signalsmithCore(),
 		sveltekit({

@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+mod autotest;
 mod models;
 mod pcm;
 mod separate;
@@ -16,6 +17,9 @@ pub fn run() {
             store::store_ingest,
             separate::separate_start,
             separate::separate_cancel,
+            autotest::autotest_config,
+            autotest::autotest_read,
+            autotest::autotest_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Looper");

@@ -107,16 +107,18 @@ Working memory for the build. SPEC.md is the source of truth; deviations go in D
 - [x] Measure separation time on this M1 in Chromium (2-min track per owner: 422 s); UI fps measured: ≥ 30 fps except a 50–80 s stall at start (open issue)
 - [x] Docs + verify + commit
 
-## Phase 9: Tauri (future, not started)
+## Phase 9: Tauri desktop (branch `tauri`)
 
-What changes when the app moves into a Tauri shell on macOS:
-
-- **Separator**: a native implementation calling demucs-rs on Metal through a Tauri command, selected in `separation/index.ts`. The browser runtime module is dropped from the desktop build.
-- **Large PCM over IPC**: rather than returning ~300 MB of stems through IPC, the native separator should write stems straight into the track directory and return metadata only. The contract allows this by letting the native store and native separator share the file layout; decide the exact handoff then.
-- **TrackStore**: a native file-system store (app data directory) with the same API; OPFS code stays for the web build. Migration of existing OPFS data is optional (private single user).
-- **ModelStore**: bundle `htdemucs_6s` with the app or cache it in the app data directory; no runtime download.
-- **WKWebView**: playback, worklet, WebGL2 and workers must keep working in WebKit (they do in Playwright WebKit today). WebGPU is not needed there once separation is native.
-- **Shell concerns**: native menu (⌘O, ?), file drops via Tauri events, window minimum 1280×800, CSP allowing the worklet, workers and wasm, autoplay policy for the AudioContext.
+- [x] Tauri v2 shell around the static SvelteKit build (`src-tauri/`), window 1512×982, min 1280×800, HTML drag-and-drop kept (`dragDropEnabled: false`)
+- [x] `__DESKTOP__` build constant (set when the Tauri CLI builds) selects native storage and separation; the browser separation runtime is compiled out of the desktop bundle
+- [x] Native track store (`store.rs`): same layout as OPFS under `<app data>/looper/`, binary IPC bodies, atomic writes, path validation; `TrackStore` now sits on a `StoreBackend` (OPFS | native)
+- [x] Native separator (`separate.rs`): demucs-core v0.3.5 on Metal (Burn wgpu + autotune + fusion), background thread, progress events, cancel per chunk, model kept loaded between jobs
+- [x] Stems written natively (16-bit planar PCM, PKS1 peaks, meta.json last); only metadata crosses IPC (`persisted: true` stem sets)
+- [x] Native model cache (`models.rs`): download once into `<app data>/models/`
+- [x] Rust unit tests (store paths, atomic writes, PCM/peaks byte compatibility); `stub-persisted` e2e covers the native handoff in all three browsers
+- [x] Measure in the real app (`LOOPER_AUTOTEST`): 2-min track 56 s warm, UI ≥ 53 fps
+- [x] Release `.app` build checked (bundles and runs; no browser separation worker/wasm in it)
+- [ ] Later: bundle the model, native menu (⌘O, ?), code signing, migrate OPFS data (optional)
 
 ## Definition of done
 
@@ -190,3 +192,7 @@ What changes when the app moves into a Tauri shell on macOS:
 - Lanes: 40 px each with hairlines, 96 px gutter (name sans 13 muted, `M` `S` mono 11, active white), loop band/edges/playhead continuous with the main waveform; muted lane drawn in `--wave-default`. Main waveform switches to the audible stem sum.
 - Fixed: gutter padding truncated "Vocals"; tightened to 16 px left, 8 px right, 4 px between M and S.
 - Accent marks while separating with loop and count-in on: playhead, Loop dot, Count-in dot, Stems dot = 4.
+
+### Phase 9
+
+- Desktop app renders identically (same Svelte UI in WKWebView). Separation no longer touches the page's GPU process: worst frame gap during a 2-minute separation 55 ms (was 47–77 s in the browser).

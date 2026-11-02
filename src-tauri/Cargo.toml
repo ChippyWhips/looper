@@ -26,6 +26,11 @@ pollster = "0.4"
 ureq = { version = "2", default-features = false, features = ["native-tls"] }
 native-tls = "0.2"
 
+# Dependencies (Burn, wgpu, demucs) are unusably slow unoptimised; keep `tauri dev` fast at runtime.
+[profile.dev.package."*"]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = true
+strip = true

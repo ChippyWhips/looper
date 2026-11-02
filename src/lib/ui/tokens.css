@@ -90,6 +90,8 @@
 		--ease-out: cubic-bezier(0.2, 0, 0, 1);
 
 		--topbar-h: 40px;
+		/* macOS traffic lights in the desktop app: 16 px inset plus the 60 px button group. */
+		--traffic-lights-w: 76px;
 		--ruler-h: 20px;
 		--overview-h: 24px;
 		--lane-h: 40px;

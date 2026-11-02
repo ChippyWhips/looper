@@ -42,6 +42,26 @@ PHASE=7 npx playwright test screenshots waveform --project=chromium
 
 They land in `screenshots/phase-7/` at 1280×800 and 1512×982.
 
+## Desktop app (Tauri, macOS)
+
+The desktop build wraps the same UI in Tauri and runs stem separation natively (demucs-rs on Metal), which keeps the UI responsive and is about 7× faster than the browser build. Requires the Rust toolchain (`rustup`, stable).
+
+```bash
+npm run desktop:dev
+```
+
+```bash
+npm run desktop:build
+```
+
+`desktop:build` produces `src-tauri/target/release/bundle/macos/Looper.app`. Tracks, settings and stems live in `~/Library/Application Support/app.looper.desktop/looper/`; the model downloads once (84 MB) into `…/models/`. Rust unit tests:
+
+```bash
+npm run test:native
+```
+
+To measure separation in the real app: `LOOPER_AUTOTEST=/path/to/track.wav npm run desktop:dev` opens the file, separates it, prints a `LOOPER_AUTOTEST_REPORT` line (time and frame-rate stats) and quits.
+
 ## What was built
 
 - **Audio engine** (`src/lib/audio/`). One AudioWorklet (`player.worklet.ts`) owns the sources, the N-source mixer, the loop reader and the stretcher. The UI only sends commands and reads position.
@@ -107,7 +127,7 @@ In Playwright, headed Chromium and WebKit expose a WebGPU adapter; headless Chro
 
 ## Known issues
 
-- **Stems in the browser are slow, and the UI can freeze for up to ~80 s when a separation starts** (GPU process saturated while the model uploads and its shaders compile; it renders at 60 fps afterwards). Phase 9 moves separation out of the browser. Details in DECISIONS.md, Open issues.
+- **Browser build only: stems are slow, and the UI can freeze for up to ~80 s when a separation starts** (GPU process saturated while the model uploads and its shaders compile; it renders at 60 fps afterwards). Use the desktop app, which separates natively (2-minute track in 56 s, no freeze). Details in DECISIONS.md, Open issues.
 - **Stems don't work in Safari/WebKit yet**: WebGPU is present but demucs-rs's GPU layer (cubecl) crashes there; the app shows `Stems unavailable in this browser`. Firefox has no WebGPU adapter.
 
 - **Start latency.** After pressing play, audio is heard ~120 ms later at 100 % (48 kHz), more at slower speeds: the stretcher's input plus output latency. The playhead holds at the start frame until then, so it never lies. See DECISIONS.md.
@@ -121,6 +141,6 @@ In Playwright, headed Chromium and WebKit expose a WebGPU adapter; headless Chro
 ## Suggested next steps
 
 1. Measure the budgets in Dia on the M1 and in real Safari; tune the Signalsmith block size if start latency matters more than stretch quality.
-2. Phase 9: move into Tauri and run demucs-rs natively on Metal behind the same `Separator`, with a native track store and bundled model (see PLAN.md).
+2. Desktop: bundle the model, add a native menu (⌘O, ?), sign and notarise the app.
 3. Reschedule count-in clicks when speed changes mid-count, and optionally align the count-in to detected beat phase.
 4. A light theme by adding a second semantic mapping under `:root[data-theme="light"]`.
